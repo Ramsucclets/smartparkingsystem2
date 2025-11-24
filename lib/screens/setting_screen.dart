@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'login_screen.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({
@@ -73,10 +74,13 @@ class _SettingScreenState extends State<SettingScreen> {
                 backgroundColor: Colors.red,
               ),
               onPressed: () {
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
               },
               child: const Text('Log Out'),
-            ),
+            )
           ],
         ),
       ),
