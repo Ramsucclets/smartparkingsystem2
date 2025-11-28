@@ -52,12 +52,7 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SettingScreen(
-                      mediaVolume: 50,
-                      onMediaVolumeUpdate: (volume) {
-                        print('Volume set to $volume');
-                      },
-                    ),
+                    builder: (context) => SettingScreen(),
                   ),
                 );
               },
