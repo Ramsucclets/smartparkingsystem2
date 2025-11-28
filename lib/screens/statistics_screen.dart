@@ -27,13 +27,13 @@ class StatisticsScreen extends StatelessWidget {
             const SizedBox(height: 20),
             Expanded(
               child: ListView(
-                children: carCount.entries.map((entry) {
-                  double percent = entry.value / totalCars;
+                children: carCount.entries.map((car) {
+                  double percent = car.value / totalCars;
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("${entry.key} — ${entry.value} cars",
+                      Text("${car.key} — ${car.value} cars",
                           style: const TextStyle(fontSize: 16)),
                       const SizedBox(height: 5),
                       LinearProgressIndicator(
