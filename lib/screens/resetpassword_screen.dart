@@ -25,7 +25,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
 
     print('Reset link sent to $email');
-    // Integrate with Firebase or API
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Password reset link sent!')),

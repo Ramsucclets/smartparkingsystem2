@@ -181,10 +181,10 @@ class _MapScreenState extends State<MapScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _currentRoute.isNotEmpty ? _nextStep : null,
-        child: const Icon(Icons.arrow_forward),
         backgroundColor: _currentRoute.isNotEmpty
             ? Theme.of(context).primaryColor
             : Colors.grey,
+        child: const Icon(Icons.arrow_forward),
       ),
       body: Container(
         decoration: BoxDecoration(
