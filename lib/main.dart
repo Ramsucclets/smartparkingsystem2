@@ -3,6 +3,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'amplifyconfiguration.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,34 +17,6 @@ Future<void> _configureAmplify() async {
     await Amplify.addPlugin(auth);
 
     // Define the configuration manually
-    const amplifyConfig = ''' {
-      "UserAgent": "aws-amplify-cli/2.0",
-      "Version": "1.0",
-      "auth": {
-        "plugins": {
-          "awsCognitoAuthPlugin": {
-            "UserAgent": "aws-amplify-cli/0.1.0",
-            "Version": "0.1.0",
-            "IdentityManager": {
-              "Default": {}
-            },
-            "CognitoUserPool": {
-              "Default": {
-                "PoolId": "us-east-1_U2PQuujH9",
-                "AppClientId": "562gj6sf0uouh7ufcip2gij1e1",
-                "Region": "us-east-1"
-              }
-            },
-            "Auth": {
-              "Default": {
-                "authenticationFlowType": "USER_SRP_AUTH"
-              }
-            }
-          }
-        }
-      }
-    }''';
-
     await Amplify.configure(amplifyConfig);
     safePrint('Successfully configured Amplify');
   } on Exception catch (e) {
