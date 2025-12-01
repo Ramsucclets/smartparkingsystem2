@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import '../widgets/navigation.dart';
 
@@ -152,10 +153,10 @@ class _MapScreenState extends State<MapScreen> {
         child: GestureDetector(
           onTap: () {
             if (spot['status'] == 'available') {
-              print('Spot ${spot['id']} selected!');
+              developer.log('Spot ${spot['id']} selected!');
               _startNavigationForSpot(spot['id']);
             } else {
-              print('Spot ${spot['id']} is taken.');
+              developer.log('Spot ${spot['id']} is taken.');
             }
           },
           child: Icon(

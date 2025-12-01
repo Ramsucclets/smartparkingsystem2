@@ -4,18 +4,22 @@ frontend:
     preBuild:
       commands:
         - git clone https://github.com/flutter/flutter.git -b stable
-        - ./flutter/bin/flutter doctor
+        - export PATH="$PWD/flutter/bin:$PATH"
+        - flutter doctor -v
+        - flutter pub get
     build:
       commands:
-        - ./flutter/bin/flutter config --enable-web
-        - ./flutter/bin/flutter build web --release --no-tree-shake-icons
+        - export PATH="$PWD/flutter/bin:$PATH"
+        - flutter config --enable-web
+        - flutter build web --release --no-tree-shake-icons
     postBuild:
       commands:
-        - echo Build completed on `date`
+        - echo "Build completed on $(date)"
   artifacts:
     baseDirectory: build/web
     files:
-      - '**/*'
+      - "**/*"
   cache:
     paths:
-      - ./flutter
+      - flutter/**/*
+      - .dart_tool/**/*

@@ -3,7 +3,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'amplifyconfiguration.dart';
+import 'services/amplifyconfiguration.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
