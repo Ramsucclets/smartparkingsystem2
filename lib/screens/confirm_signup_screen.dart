@@ -13,6 +13,7 @@ class ConfirmSignUpScreen extends StatefulWidget {
 
 class _ConfirmSignUpScreenState extends State<ConfirmSignUpScreen> {
   final _codeController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -32,6 +33,10 @@ class _ConfirmSignUpScreenState extends State<ConfirmSignUpScreen> {
       );
       return;
     }
+
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       await AuthService().confirmSignUp(
@@ -58,6 +63,12 @@ class _ConfirmSignUpScreenState extends State<ConfirmSignUpScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -89,8 +100,17 @@ class _ConfirmSignUpScreenState extends State<ConfirmSignUpScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _confirm,
-                child: const Text('Confirm'),
+                onPressed: _isLoading ? null : _confirm,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Confirm'),
               ),
             )
           ],

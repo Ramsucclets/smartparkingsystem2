@@ -1,17 +1,17 @@
+import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:async';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../models/parking_grid.dart';
 import '../models/parking_spot.dart';
+import '../models/road.dart';
+import '../models/obstacle.dart';
+import '../services/dynamodb_service.dart';
 import '../widgets/navigation.dart';
 
-const startAlignment = Alignment.topLeft;
-const endAlignment = Alignment.bottomRight;
-
 class MapScreen extends StatefulWidget {
-  const MapScreen(this.color1, this.color2, {super.key});
-
-  final Color color1;
-  final Color color2;
+  const MapScreen({super.key});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -22,7 +22,18 @@ class _MapScreenState extends State<MapScreen> {
   final TransformationController _transformController =
       TransformationController();
 
-  // Spot availability status (in real app, this would come from backend)
+  // DynamoDB service for fetching real-time data
+  final DynamoDBService _dynamoDBService = DynamoDBService();
+
+  // Loading state for data fetch
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  // Timer for periodic refresh
+  Timer? _refreshTimer;
+  static const Duration _refreshInterval = Duration(seconds: 30);
+
+  // Spot availability status (populated from backend)
   final Map<String, bool> _spotAvailability = {};
 
   String? _selectedSpotId;
@@ -33,10 +44,96 @@ class _MapScreenState extends State<MapScreen> {
   String _currentDistance = "Welcome!";
   String _currentInstruction = "Please select a parking spot";
 
+  Size? _viewportSize;
+
   @override
   void initState() {
     super.initState();
     _initializeGrid();
+    _fetchParkingData();
+    _startAutoRefresh();
+    // Fit to viewport after the first frame when we have layout info
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_viewportSize != null) {
+        _fitToViewport(_viewportSize!);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  /// Start periodic refresh of parking data
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(_refreshInterval, (_) {
+      _fetchParkingData(showLoading: false);
+    });
+  }
+
+  /// Fetch parking data from DynamoDB and update availability
+  Future<void> _fetchParkingData({bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      final spots = await _dynamoDBService.fetchParkingSpots();
+
+      if (mounted) {
+        setState(() {
+          // Update availability based on backend data
+          for (final spotData in spots) {
+            // Map spotId to availability (available = not occupied)
+            _spotAvailability[spotData.spotId] = !spotData.isOccupied;
+          }
+          _isLoading = false;
+          _errorMessage = null;
+        });
+
+        developer.log('Updated ${spots.length} spots from backend');
+      }
+    } catch (e) {
+      developer.log('Error fetching parking data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  /// Fit the grid to the available viewport with padding
+  void _fitToViewport(Size viewportSize) {
+    if (viewportSize.isEmpty) return;
+
+    const padding = 40.0;
+    final availableWidth = viewportSize.width - padding * 2;
+    final availableHeight = viewportSize.height - padding * 2;
+
+    // Calculate scale to fit content
+    final scaleX = availableWidth / _grid.canvasWidth;
+    final scaleY = availableHeight / _grid.canvasHeight;
+    final scale = (scaleX < scaleY ? scaleX : scaleY).clamp(0.5, 1.0);
+
+    // Calculate translation to center the content
+    final scaledWidth = _grid.canvasWidth * scale;
+    final scaledHeight = _grid.canvasHeight * scale;
+    final translateX = (viewportSize.width - scaledWidth) / 2;
+    final translateY = (viewportSize.height - scaledHeight) / 2;
+
+    // Apply the transform
+    _transformController.value = Matrix4.identity()
+      ..translate(translateX, translateY)
+      ..scale(scale);
   }
 
   void _initializeGrid() {
@@ -57,8 +154,68 @@ class _MapScreenState extends State<MapScreen> {
 
     for (final spot in spots) {
       _grid.addSpot(spot);
-      // Random availability for demo (in real app, from backend)
-      _spotAvailability[spot.id] = spot.id.hashCode % 3 != 0;
+      // Availability will be updated by _fetchParkingData from backend
+    }
+  }
+
+  /// Upload a parking grid JSON file for testing
+  Future<void> _uploadParkingGrid() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final fileBytes = result.files.first.bytes;
+        if (fileBytes != null) {
+          final jsonString = utf8.decode(fileBytes);
+          final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
+
+          setState(() {
+            _grid = ParkingGrid.fromJson(jsonData);
+            // Reset availability - will be updated from backend
+            _spotAvailability.clear();
+            // Reset navigation state
+            _selectedSpotId = null;
+            _currentRoute = [];
+            _currentStepIndex = 0;
+            _currentIcon = Icons.info;
+            _currentDistance = "Grid Loaded!";
+            _currentInstruction =
+                "${_grid.name} - ${_grid.spots.length} spots, ${_grid.roads.length} roads";
+          });
+
+          // Fetch real availability from backend
+          await _fetchParkingData();
+
+          developer.log(
+              'Loaded grid: ${_grid.name} with ${_grid.spots.length} spots');
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content:
+                    Text('Loaded: ${_grid.name} (${_grid.spots.length} spots)'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      developer.log('Error loading grid: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading grid: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -126,6 +283,32 @@ class _MapScreenState extends State<MapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_grid.name),
+        actions: [
+          // Loading indicator
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          // Refresh button
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Parking Data',
+            onPressed: _isLoading ? null : () => _fetchParkingData(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.upload_file),
+            tooltip: 'Upload Parking Grid JSON',
+            onPressed: _uploadParkingGrid,
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _currentRoute.isNotEmpty ? _nextStep : null,
@@ -134,65 +317,104 @@ class _MapScreenState extends State<MapScreen> {
             : Colors.grey,
         child: const Icon(Icons.arrow_forward),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [widget.color1, widget.color2],
-            begin: startAlignment,
-            end: endAlignment,
-          ),
-        ),
-        child: Column(
-          children: [
-            NavigationWidget(
-              icon: _currentIcon,
-              distance: _currentDistance,
-              instruction: _currentInstruction,
+      body: Column(
+        children: [
+          // Error banner
+          if (_errorMessage != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.red.shade100,
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline,
+                      color: Colors.red.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Failed to load parking data. Using cached data.',
+                      style:
+                          TextStyle(color: Colors.red.shade700, fontSize: 12),
+                    ),
+                  ),
+                  IconButton(
+                    icon:
+                        Icon(Icons.close, color: Colors.red.shade700, size: 18),
+                    onPressed: () => setState(() => _errorMessage = null),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
             ),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A2E),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white24),
+          NavigationWidget(
+            icon: _currentIcon,
+            distance: _currentDistance,
+            instruction: _currentInstruction,
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardTheme.color,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(context).dividerColor,
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: InteractiveViewer(
-                    transformationController: _transformController,
-                    constrained: false,
-                    minScale: 0.5,
-                    maxScale: 3.0,
-                    boundaryMargin: const EdgeInsets.all(100),
-                    child: GestureDetector(
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Capture viewport size and fit on first build
+                    final currentSize =
+                        Size(constraints.maxWidth, constraints.maxHeight);
+                    if (_viewportSize == null &&
+                        currentSize.width > 0 &&
+                        currentSize.height > 0) {
+                      _viewportSize = currentSize;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _fitToViewport(currentSize);
+                      });
+                    }
+                    return GestureDetector(
                       onTapUp: (details) {
-                        final localPos =
+                        // Convert the tap position from widget-local to scene coordinates
+                        final scenePos =
                             _transformController.toScene(details.localPosition);
-                        _handleTap(localPos.dx, localPos.dy);
+                        _handleTap(scenePos.dx, scenePos.dy);
                       },
-                      child: Container(
-                        width: _grid.canvasWidth,
-                        height: _grid.canvasHeight,
-                        color: const Color(0xFF0D0D1A),
-                        child: CustomPaint(
-                          size: Size(_grid.canvasWidth, _grid.canvasHeight),
-                          painter: UserGridPainter(
-                            grid: _grid,
-                            spotAvailability: _spotAvailability,
-                            selectedSpotId: _selectedSpotId,
+                      child: InteractiveViewer(
+                        transformationController: _transformController,
+                        constrained: false,
+                        minScale: 0.5,
+                        maxScale: 3.0,
+                        boundaryMargin: const EdgeInsets.all(100),
+                        child: Container(
+                          width: _grid.canvasWidth,
+                          height: _grid.canvasHeight,
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          child: CustomPaint(
+                            size: Size(_grid.canvasWidth, _grid.canvasHeight),
+                            painter: UserGridPainter(
+                              grid: _grid,
+                              spotAvailability: _spotAvailability,
+                              selectedSpotId: _selectedSpotId,
+                              isDarkMode: Theme.of(context).brightness ==
+                                  Brightness.dark,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
-            // Legend
-            _buildLegend(),
-          ],
-        ),
+          ),
+          // Legend
+          _buildLegend(),
+        ],
       ),
     );
   }
@@ -215,8 +437,15 @@ class _MapScreenState extends State<MapScreen> {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -244,7 +473,7 @@ class _MapScreenState extends State<MapScreen> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     );
@@ -256,18 +485,23 @@ class UserGridPainter extends CustomPainter {
   final ParkingGrid grid;
   final Map<String, bool> spotAvailability;
   final String? selectedSpotId;
+  final bool isDarkMode;
 
   UserGridPainter({
     required this.grid,
     required this.spotAvailability,
     this.selectedSpotId,
+    this.isDarkMode = true,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     // Draw grid lines
+    final gridLineColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.1);
     final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.1)
+      ..color = gridLineColor
       ..strokeWidth = 1;
 
     for (double x = 0; x <= grid.canvasWidth; x += grid.gridSize) {
@@ -277,10 +511,241 @@ class UserGridPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(grid.canvasWidth, y), gridPaint);
     }
 
+    // Draw roads (behind spots)
+    for (final road in grid.roads) {
+      _drawRoad(canvas, road);
+    }
+
+    // Draw obstacles (behind spots)
+    for (final obstacle in grid.obstacles) {
+      _drawObstacle(canvas, obstacle);
+    }
+
     // Draw parking spots
     for (final spot in grid.spots) {
       _drawSpot(canvas, spot);
     }
+
+    // Draw entrance and exit if they exist
+    if (grid.entrance != null) {
+      _drawEntrance(canvas, grid.entrance!);
+    }
+    if (grid.exit != null) {
+      _drawExit(canvas, grid.exit!);
+    }
+  }
+
+  void _drawRoad(Canvas canvas, Road road) {
+    final rect = Rect.fromLTWH(road.x, road.y, road.width, road.height);
+
+    // Road fill - gray/asphalt color
+    final fillPaint = Paint()
+      ..color = Colors.grey.shade700
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      fillPaint,
+    );
+
+    // Center dashed line
+    final centerLinePaint = Paint()
+      ..color = Colors.yellow.withValues(alpha: 0.6)
+      ..strokeWidth = 2;
+    if (road.width > road.height) {
+      // Horizontal road
+      canvas.drawLine(
+        Offset(road.x + 10, road.y + road.height / 2),
+        Offset(road.x + road.width - 10, road.y + road.height / 2),
+        centerLinePaint,
+      );
+    } else {
+      // Vertical road
+      canvas.drawLine(
+        Offset(road.x + road.width / 2, road.y + 10),
+        Offset(road.x + road.width / 2, road.y + road.height - 10),
+        centerLinePaint,
+      );
+    }
+
+    // Border
+    final borderPaint = Paint()
+      ..color = Colors.grey.shade500
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      borderPaint,
+    );
+
+    // Display label
+    final displayText = road.label ?? road.id;
+    final textColor = Colors.white;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: displayText,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(road.x + 4, road.y + 4),
+    );
+  }
+
+  void _drawObstacle(Canvas canvas, Obstacle obstacle) {
+    final rect =
+        Rect.fromLTWH(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    final color = _getObstacleColor(obstacle.type);
+
+    // Fill
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      fillPaint,
+    );
+
+    // Border
+    final borderPaint = Paint()
+      ..color = color.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      borderPaint,
+    );
+
+    // Display label
+    final displayText = obstacle.label ?? obstacle.id;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: displayText,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        obstacle.x + (obstacle.width - textPainter.width) / 2,
+        obstacle.y + (obstacle.height - textPainter.height) / 2,
+      ),
+    );
+  }
+
+  Color _getObstacleColor(ObstacleType type) {
+    switch (type) {
+      case ObstacleType.pillar:
+        return Colors.grey.shade800;
+      case ObstacleType.wall:
+        return Colors.brown.shade700;
+      case ObstacleType.barrier:
+        return Colors.orange.shade800;
+    }
+  }
+
+  void _drawEntrance(Canvas canvas, dynamic entrance) {
+    final rect = Rect.fromLTWH(entrance.x as double, entrance.y as double,
+        entrance.width as double, entrance.height as double);
+
+    // Green fill
+    final fillPaint = Paint()
+      ..color = Colors.green.withValues(alpha: 0.4)
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      fillPaint,
+    );
+
+    // Border
+    final borderPaint = Paint()
+      ..color = Colors.green
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      borderPaint,
+    );
+
+    // Label
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'IN',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (entrance.x as double) +
+            ((entrance.width as double) - textPainter.width) / 2,
+        (entrance.y as double) +
+            ((entrance.height as double) - textPainter.height) / 2,
+      ),
+    );
+  }
+
+  void _drawExit(Canvas canvas, dynamic exit) {
+    final rect = Rect.fromLTWH(exit.x as double, exit.y as double,
+        exit.width as double, exit.height as double);
+
+    // Red fill
+    final fillPaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.4)
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      fillPaint,
+    );
+
+    // Border
+    final borderPaint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      borderPaint,
+    );
+
+    // Label
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'OUT',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (exit.x as double) + ((exit.width as double) - textPainter.width) / 2,
+        (exit.y as double) + ((exit.height as double) - textPainter.height) / 2,
+      ),
+    );
   }
 
   void _drawSpot(Canvas canvas, ParkingSpot spot) {
@@ -331,12 +796,14 @@ class UserGridPainter extends CustomPainter {
       );
     }
 
-    // ID label
+    // Display label if set, otherwise show ID
+    final displayText = spot.label ?? spot.id;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
     final textPainter = TextPainter(
       text: TextSpan(
-        text: spot.id,
+        text: displayText,
         style: TextStyle(
-          color: Colors.white,
+          color: textColor,
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
@@ -367,6 +834,12 @@ class UserGridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant UserGridPainter oldDelegate) {
     return selectedSpotId != oldDelegate.selectedSpotId ||
-        grid.spots.length != oldDelegate.grid.spots.length;
+        grid.spots.length != oldDelegate.grid.spots.length ||
+        grid.roads.length != oldDelegate.grid.roads.length ||
+        grid.obstacles.length != oldDelegate.grid.obstacles.length ||
+        grid.entrance != oldDelegate.grid.entrance ||
+        grid.exit != oldDelegate.grid.exit ||
+        grid.name != oldDelegate.grid.name ||
+        isDarkMode != oldDelegate.isDarkMode;
   }
 }

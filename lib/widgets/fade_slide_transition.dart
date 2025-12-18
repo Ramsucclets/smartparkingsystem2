@@ -5,13 +5,15 @@ class FadeSlideTransition extends StatefulWidget {
   final int index;
   final Duration duration;
   final double offset;
+  final int staggerDelayMs;
 
   const FadeSlideTransition({
     super.key,
     required this.child,
     this.index = 0,
-    this.duration = const Duration(milliseconds: 500),
-    this.offset = 50.0,
+    this.duration = const Duration(milliseconds: 250),
+    this.offset = 30.0,
+    this.staggerDelayMs = 40,
   });
 
   @override
@@ -43,7 +45,8 @@ class _FadeSlideTransitionState extends State<FadeSlideTransition>
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
 
-    Future.delayed(Duration(milliseconds: widget.index * 100), () {
+    Future.delayed(Duration(milliseconds: widget.index * widget.staggerDelayMs),
+        () {
       if (mounted) {
         _controller.forward();
       }

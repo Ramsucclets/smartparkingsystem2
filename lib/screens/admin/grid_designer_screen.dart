@@ -1,20 +1,22 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../models/parking_grid.dart';
 import '../../models/parking_spot.dart';
+import '../../models/road.dart';
+import '../../models/obstacle.dart';
+import '../../models/entrance.dart';
+import '../../utils/pathfinder.dart';
 import '../../widgets/fade_slide_transition.dart';
+import 'designer_toolbar.dart';
+import 'properties_panel.dart';
+import 'grid_painter.dart';
 
-// Conditional import for web
 import 'grid_designer_web.dart' if (dart.library.io) 'grid_designer_io.dart'
     as file_ops;
 
-/// Tool modes for the grid designer
-enum DesignerTool { select, pan, addSpot, delete, ruler, rotate }
-
-/// Main grid designer screen for creating/editing parking layouts
 class GridDesignerScreen extends StatefulWidget {
   final String? gridId;
 
@@ -28,11 +30,20 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
   late ParkingGrid _grid;
   DesignerTool _currentTool = DesignerTool.select;
   SpotType _selectedSpotType = SpotType.regular;
+  ObstacleType _selectedObstacleType = ObstacleType.pillar;
+  EntranceType _selectedEntranceType = EntranceType.entrance;
   final Set<String> _selectedSpotIds = {};
+  final Set<String> _selectedRoadIds = {};
+  final Set<String> _selectedObstacleIds = {};
+  bool _showPaths = false; // Toggle for path visualization
 
   // Drag selection state
   Offset? _dragStart;
   Offset? _dragEnd;
+
+  // Road drawing state
+  Offset? _roadDrawStart;
+  Offset? _roadDrawEnd;
 
   final TransformationController _transformController =
       TransformationController();
@@ -46,6 +57,19 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
   bool _isHoveringRuler = false;
   String? _draggingSpotId;
   Offset? _spotDragOffset;
+  String? _draggingRoadId;
+  Offset? _roadDragOffset;
+  String? _draggingObstacleId;
+  Offset? _obstacleDragOffset;
+
+  final ValueNotifier<int> _dragUpdateNotifier = ValueNotifier<int>(0);
+
+  // Clipboard for copy/paste
+  List<ParkingSpot> _clipboardSpots = [];
+  List<Road> _clipboardRoads = [];
+  List<Obstacle> _clipboardObstacles = [];
+
+  Size? _canvasViewportSize;
 
   @override
   void initState() {
@@ -59,9 +83,31 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _dragUpdateNotifier.dispose();
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  /// Center the grid content in the viewport
   void _centerCanvas() {
-    // Reset to identity matrix to center the view
-    _transformController.value = Matrix4.identity();
+    if (_canvasViewportSize == null || _canvasViewportSize!.isEmpty) {
+      // Fallback to identity if we don't have viewport size
+      _transformController.value = Matrix4.identity();
+      return;
+    }
+
+    // Calculate translation to center the canvas
+    final viewportWidth = _canvasViewportSize!.width;
+    final viewportHeight = _canvasViewportSize!.height;
+
+    // Center the canvas in the viewport
+    final translateX = (viewportWidth - _grid.canvasWidth) / 2;
+    final translateY = (viewportHeight - _grid.canvasHeight) / 2;
+
+    _transformController.value = Matrix4.identity()
+      ..setTranslationRaw(translateX, translateY, 0);
   }
 
   void _saveState() {
@@ -152,19 +198,301 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     return null;
   }
 
-  void _selectSpotAt(double x, double y, {bool isMultiSelect = false}) {
-    final spotId = _findSpotAt(x, y);
+  String? _findRoadAt(double x, double y) {
+    for (int i = _grid.roads.length - 1; i >= 0; i--) {
+      final road = _grid.roads[i];
+      if (x >= road.x &&
+          x <= road.x + road.width &&
+          y >= road.y &&
+          y <= road.y + road.height) {
+        return road.id;
+      }
+    }
+    return null;
+  }
+
+  String? _findObstacleAt(double x, double y) {
+    for (int i = _grid.obstacles.length - 1; i >= 0; i--) {
+      final obstacle = _grid.obstacles[i];
+      if (x >= obstacle.x &&
+          x <= obstacle.x + obstacle.width &&
+          y >= obstacle.y &&
+          y <= obstacle.y + obstacle.height) {
+        return obstacle.id;
+      }
+    }
+    return null;
+  }
+
+  void _addRoadAt(double x, double y, {double? endX, double? endY}) {
+    // Calculate dimensions if drawing a road segment
+    double roadWidth = 80;
+    double roadHeight = 200;
+
+    if (endX != null && endY != null) {
+      // Road was drawn with drag - calculate dimensions from start/end
+      final dx = (endX - x).abs();
+      final dy = (endY - y).abs();
+      if (dx > dy) {
+        // Horizontal road
+        roadWidth = dx.clamp(40, _grid.canvasWidth);
+        roadHeight = 60;
+      } else {
+        // Vertical road
+        roadWidth = 60;
+        roadHeight = dy.clamp(40, _grid.canvasHeight);
+      }
+      // Adjust position to start from min coordinates
+      x = x < endX ? x : endX;
+      y = y < endY ? y : endY;
+    }
+
+    var snappedX = _grid.snapToGrid(x);
+    var snappedY = _grid.snapToGrid(y);
+
+    snappedX = snappedX.clamp(0, _grid.canvasWidth - roadWidth);
+    snappedY = snappedY.clamp(0, _grid.canvasHeight - roadHeight);
+
+    final road = Road(
+      id: _grid.generateRoadId(),
+      x: snappedX,
+      y: snappedY,
+      width: roadWidth,
+      height: roadHeight,
+    );
+
     setState(() {
-      if (!isMultiSelect) {
-        _selectedSpotIds.clear();
+      _grid.addRoad(road);
+      _selectedRoadIds.clear();
+      _selectedRoadIds.add(road.id);
+      _selectedSpotIds.clear();
+      _selectedObstacleIds.clear();
+    });
+    _saveState();
+  }
+
+  void _addObstacleAt(double x, double y) {
+    final tempObstacle = Obstacle(
+      id: '',
+      x: 0,
+      y: 0,
+      type: _selectedObstacleType,
+    );
+
+    final centeredX = x - tempObstacle.width / 2;
+    final centeredY = y - tempObstacle.height / 2;
+
+    var snappedX = _grid.snapToGrid(centeredX);
+    var snappedY = _grid.snapToGrid(centeredY);
+
+    snappedX = snappedX.clamp(0, _grid.canvasWidth - tempObstacle.width);
+    snappedY = snappedY.clamp(0, _grid.canvasHeight - tempObstacle.height);
+
+    final obstacle = Obstacle(
+      id: _grid.generateObstacleId(),
+      x: snappedX,
+      y: snappedY,
+      type: _selectedObstacleType,
+    );
+
+    setState(() {
+      _grid.addObstacle(obstacle);
+      _selectedObstacleIds.clear();
+      _selectedObstacleIds.add(obstacle.id);
+      _selectedSpotIds.clear();
+      _selectedRoadIds.clear();
+    });
+    _saveState();
+  }
+
+  /// Add an entrance or exit at the given position
+  /// Must be placed on a road
+  void _addEntranceAt(double x, double y) {
+    // Check if position is on a road
+    final road = _grid.findRoadAtPoint(x, y);
+    if (road == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Entrance/Exit must be placed on a road'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final tempEntrance = Entrance(
+      id: '',
+      x: 0,
+      y: 0,
+      type: _selectedEntranceType,
+    );
+
+    final centeredX = x - tempEntrance.width / 2;
+    final centeredY = y - tempEntrance.height / 2;
+
+    var snappedX = _grid.snapToGrid(centeredX);
+    var snappedY = _grid.snapToGrid(centeredY);
+
+    snappedX = snappedX.clamp(0, _grid.canvasWidth - tempEntrance.width);
+    snappedY = snappedY.clamp(0, _grid.canvasHeight - tempEntrance.height);
+
+    final entrance = Entrance(
+      id: _selectedEntranceType == EntranceType.entrance ? 'ENTRANCE' : 'EXIT',
+      x: snappedX,
+      y: snappedY,
+      type: _selectedEntranceType,
+      attachedRoadId: road.id,
+    );
+
+    setState(() {
+      if (_selectedEntranceType == EntranceType.entrance) {
+        _grid.setEntrance(entrance);
+      } else {
+        _grid.setExit(entrance);
       }
-      if (spotId != null) {
-        if (isMultiSelect && _selectedSpotIds.contains(spotId)) {
-          _selectedSpotIds.remove(spotId);
-        } else {
-          _selectedSpotIds.add(spotId);
-        }
-      }
+    });
+    _saveState();
+
+    final typeLabel =
+        _selectedEntranceType == EntranceType.entrance ? 'Entrance' : 'Exit';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$typeLabel placed successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  /// Compute routes from entrance to all parking spots and from spots to exit
+  void _computeRoutes() {
+    if (_grid.entrance == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please place an entrance first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (_grid.exit == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please place an exit first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (_grid.spots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No parking spots to compute routes for'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final pathFinder = PathFinder(_grid, cellSize: _grid.gridSize);
+    final results = pathFinder.computeAllPaths();
+
+    if (results.containsKey('error')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${results['error']}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final successCount = results['successCount'] as int;
+    final failCount = results['failCount'] as int;
+    final errors = results['errors'] as List<String>;
+
+    setState(() {
+      _showPaths = true; // Show computed paths
+    });
+    _saveState();
+
+    if (failCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully computed routes for $successCount spots'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Computed $successCount routes, $failCount failed'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Details',
+            textColor: Colors.white,
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Routing Errors'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: errors.map((e) => Text('• $e')).toList(),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Select an element (spot, road, or obstacle) at the given position
+  void _selectElementAt(double x, double y) {
+    // Check spots first (top layer)
+    final spotId = _findSpotAt(x, y);
+    if (spotId != null) {
+      setState(() {
+        _clearAllSelections();
+        _selectedSpotIds.add(spotId);
+      });
+      return;
+    }
+
+    // Check roads
+    final roadId = _findRoadAt(x, y);
+    if (roadId != null) {
+      setState(() {
+        _clearAllSelections();
+        _selectedRoadIds.add(roadId);
+      });
+      return;
+    }
+
+    // Check obstacles
+    final obstacleId = _findObstacleAt(x, y);
+    if (obstacleId != null) {
+      setState(() {
+        _clearAllSelections();
+        _selectedObstacleIds.add(obstacleId);
+      });
+      return;
+    }
+
+    // Clicked on empty area - clear selection
+    setState(() {
+      _clearAllSelections();
     });
   }
 
@@ -180,7 +508,41 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
           _selectedSpotIds.remove(foundId);
         });
         _saveState();
+        return;
       }
+    }
+    // Try deleting a road
+    final roadId = _findRoadAt(x, y);
+    if (roadId != null) {
+      _deleteRoadAt(roadId);
+      return;
+    }
+    // Try deleting an obstacle
+    final obstacleId = _findObstacleAt(x, y);
+    if (obstacleId != null) {
+      _deleteObstacleAt(obstacleId);
+    }
+  }
+
+  void _deleteRoadAt(String roadId) {
+    final index = _grid.roads.indexWhere((r) => r.id == roadId);
+    if (index != -1) {
+      setState(() {
+        _grid.roads.removeAt(index);
+        _selectedRoadIds.remove(roadId);
+      });
+      _saveState();
+    }
+  }
+
+  void _deleteObstacleAt(String obstacleId) {
+    final index = _grid.obstacles.indexWhere((o) => o.id == obstacleId);
+    if (index != -1) {
+      setState(() {
+        _grid.obstacles.removeAt(index);
+        _selectedObstacleIds.remove(obstacleId);
+      });
+      _saveState();
     }
   }
 
@@ -194,13 +556,182 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     }
   }
 
+  void _deleteSelectedRoads() {
+    if (_selectedRoadIds.isNotEmpty) {
+      setState(() {
+        _grid.roads.removeWhere((r) => _selectedRoadIds.contains(r.id));
+        _selectedRoadIds.clear();
+      });
+      _saveState();
+    }
+  }
+
+  void _deleteSelectedObstacles() {
+    if (_selectedObstacleIds.isNotEmpty) {
+      setState(() {
+        _grid.obstacles.removeWhere((o) => _selectedObstacleIds.contains(o.id));
+        _selectedObstacleIds.clear();
+      });
+      _saveState();
+    }
+  }
+
+  void _deleteAllSelected() {
+    setState(() {
+      _grid.spots.removeWhere((s) => _selectedSpotIds.contains(s.id));
+      _grid.roads.removeWhere((r) => _selectedRoadIds.contains(r.id));
+      _grid.obstacles.removeWhere((o) => _selectedObstacleIds.contains(o.id));
+      _clearAllSelections();
+    });
+    _saveState();
+  }
+
+  void _clearAllSelections() {
+    _selectedSpotIds.clear();
+    _selectedRoadIds.clear();
+    _selectedObstacleIds.clear();
+  }
+
+  /// Copy selected elements to clipboard
+  void _copySelected() {
+    _clipboardSpots = _grid.spots
+        .where((s) => _selectedSpotIds.contains(s.id))
+        .map((s) => ParkingSpot(
+              id: s.id,
+              x: s.x,
+              y: s.y,
+              width: s.width,
+              height: s.height,
+              rotation: s.rotation,
+              type: s.type,
+              label: s.label,
+            ))
+        .toList();
+
+    _clipboardRoads = _grid.roads
+        .where((r) => _selectedRoadIds.contains(r.id))
+        .map((r) => Road(
+              id: r.id,
+              x: r.x,
+              y: r.y,
+              width: r.width,
+              height: r.height,
+            ))
+        .toList();
+
+    _clipboardObstacles = _grid.obstacles
+        .where((o) => _selectedObstacleIds.contains(o.id))
+        .map((o) => Obstacle(
+              id: o.id,
+              x: o.x,
+              y: o.y,
+              width: o.width,
+              height: o.height,
+              type: o.type,
+            ))
+        .toList();
+
+    if (_clipboardSpots.isNotEmpty ||
+        _clipboardRoads.isNotEmpty ||
+        _clipboardObstacles.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Copied ${_clipboardSpots.length} spots, ${_clipboardRoads.length} roads, ${_clipboardObstacles.length} obstacles'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  /// Paste elements from clipboard with offset
+  void _pasteFromClipboard() {
+    if (_clipboardSpots.isEmpty &&
+        _clipboardRoads.isEmpty &&
+        _clipboardObstacles.isEmpty) {
+      return;
+    }
+
+    const pasteOffset = 20.0;
+
+    setState(() {
+      _clearAllSelections();
+
+      // Paste spots
+      for (final spot in _clipboardSpots) {
+        final newSpot = ParkingSpot(
+          id: _grid.generateSpotId(),
+          x: (spot.x + pasteOffset).clamp(0, _grid.canvasWidth - spot.width),
+          y: (spot.y + pasteOffset).clamp(0, _grid.canvasHeight - spot.height),
+          width: spot.width,
+          height: spot.height,
+          rotation: spot.rotation,
+          type: spot.type,
+          label: spot.label,
+        );
+        _grid.addSpot(newSpot);
+        _selectedSpotIds.add(newSpot.id);
+      }
+
+      // Paste roads
+      for (final road in _clipboardRoads) {
+        final newRoad = Road(
+          id: _grid.generateRoadId(),
+          x: (road.x + pasteOffset).clamp(0, _grid.canvasWidth - road.width),
+          y: (road.y + pasteOffset).clamp(0, _grid.canvasHeight - road.height),
+          width: road.width,
+          height: road.height,
+        );
+        _grid.addRoad(newRoad);
+        _selectedRoadIds.add(newRoad.id);
+      }
+
+      // Paste obstacles
+      for (final obstacle in _clipboardObstacles) {
+        final newObstacle = Obstacle(
+          id: _grid.generateObstacleId(),
+          x: (obstacle.x + pasteOffset)
+              .clamp(0, _grid.canvasWidth - obstacle.width),
+          y: (obstacle.y + pasteOffset)
+              .clamp(0, _grid.canvasHeight - obstacle.height),
+          width: obstacle.width,
+          height: obstacle.height,
+          type: obstacle.type,
+        );
+        _grid.addObstacle(newObstacle);
+        _selectedObstacleIds.add(newObstacle.id);
+      }
+    });
+
+    _saveState();
+  }
+
+  /// Select all elements on canvas
+  void _selectAll() {
+    setState(() {
+      _selectedSpotIds.clear();
+      _selectedRoadIds.clear();
+      _selectedObstacleIds.clear();
+
+      for (final spot in _grid.spots) {
+        _selectedSpotIds.add(spot.id);
+      }
+      for (final road in _grid.roads) {
+        _selectedRoadIds.add(road.id);
+      }
+      for (final obstacle in _grid.obstacles) {
+        _selectedObstacleIds.add(obstacle.id);
+      }
+    });
+  }
+
   void _clearAll() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear All Spots?'),
-        content:
-            const Text('This will remove all parking spots from the grid.'),
+        title: const Text('Clear All Elements?'),
+        content: const Text(
+            'This will remove all spots, roads, and obstacles from the grid.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -211,7 +742,11 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
               Navigator.pop(context);
               setState(() {
                 _grid.spots.clear();
+                _grid.roads.clear();
+                _grid.obstacles.clear();
                 _selectedSpotIds.clear();
+                _selectedRoadIds.clear();
+                _selectedObstacleIds.clear();
               });
               _saveState();
             },
@@ -329,10 +864,56 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       autofocus: true,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
-          // Escape key to clear ruler
-          if (event.logicalKey == LogicalKeyboardKey.escape) {
+          final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+
+          // Ctrl+Z for undo
+          if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyZ) {
+            if (_undoStack.length > 1) {
+              _undo();
+              return KeyEventResult.handled;
+            }
+          }
+          // Ctrl+Y for redo (industry standard)
+          else if (isCtrlPressed &&
+              event.logicalKey == LogicalKeyboardKey.keyY) {
+            if (_redoStack.isNotEmpty) {
+              _redo();
+              return KeyEventResult.handled;
+            }
+          }
+          // Ctrl+C for copy
+          else if (isCtrlPressed &&
+              event.logicalKey == LogicalKeyboardKey.keyC) {
+            _copySelected();
+            return KeyEventResult.handled;
+          }
+          // Ctrl+V for paste
+          else if (isCtrlPressed &&
+              event.logicalKey == LogicalKeyboardKey.keyV) {
+            _pasteFromClipboard();
+            return KeyEventResult.handled;
+          }
+          // Ctrl+S for save/export
+          else if (isCtrlPressed &&
+              event.logicalKey == LogicalKeyboardKey.keyS) {
+            _exportToJson();
+            return KeyEventResult.handled;
+          }
+          // Ctrl+A for select all
+          else if (isCtrlPressed &&
+              event.logicalKey == LogicalKeyboardKey.keyA) {
+            _selectAll();
+            return KeyEventResult.handled;
+          }
+          // Escape key to clear ruler or deselect
+          else if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (_rulerStart != null || _rulerEnd != null) {
               _clearRuler();
+              return KeyEventResult.handled;
+            } else if (_selectedSpotIds.isNotEmpty ||
+                _selectedRoadIds.isNotEmpty ||
+                _selectedObstacleIds.isNotEmpty) {
+              setState(() => _clearAllSelections());
               return KeyEventResult.handled;
             }
           }
@@ -376,12 +957,25 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
             IconButton(
               icon: const Icon(Icons.undo),
               onPressed: _undoStack.length > 1 ? _undo : null,
-              tooltip: 'Undo',
+              tooltip: 'Undo (Ctrl+Z)',
             ),
             IconButton(
               icon: const Icon(Icons.redo),
               onPressed: _redoStack.isNotEmpty ? _redo : null,
-              tooltip: 'Redo',
+              tooltip: 'Redo (Ctrl+Y)',
+            ),
+            const SizedBox(width: 8),
+            // Compute Routes button
+            IconButton(
+              icon: const Icon(Icons.route),
+              onPressed: _computeRoutes,
+              tooltip: 'Compute Routes',
+            ),
+            // Toggle path visibility
+            IconButton(
+              icon: Icon(_showPaths ? Icons.visibility : Icons.visibility_off),
+              onPressed: () => setState(() => _showPaths = !_showPaths),
+              tooltip: _showPaths ? 'Hide Paths' : 'Show Paths',
             ),
             const SizedBox(width: 8),
             IconButton(
@@ -402,7 +996,20 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
             // Left toolbar
             FadeSlideTransition(
               index: 0,
-              child: _buildToolbar(),
+              child: DesignerToolbar(
+                currentTool: _currentTool,
+                selectedSpotType: _selectedSpotType,
+                selectedObstacleType: _selectedObstacleType,
+                selectedEntranceType: _selectedEntranceType,
+                onToolChanged: (tool) => setState(() => _currentTool = tool),
+                onSpotTypeChanged: (type) =>
+                    setState(() => _selectedSpotType = type),
+                onObstacleTypeChanged: (type) =>
+                    setState(() => _selectedObstacleType = type),
+                onEntranceTypeChanged: (type) =>
+                    setState(() => _selectedEntranceType = type),
+                onClearAll: _clearAll,
+              ),
             ),
             // Main canvas
             Expanded(
@@ -412,135 +1019,30 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
               ),
             ),
             // Right properties panel
-            if (_selectedSpotIds.isNotEmpty)
-              FadeSlideTransition(
-                index: 2,
-                child: _buildPropertiesPanel(),
+            if (_selectedSpotIds.isNotEmpty ||
+                _selectedRoadIds.isNotEmpty ||
+                _selectedObstacleIds.isNotEmpty)
+              RepaintBoundary(
+                child: FadeSlideTransition(
+                  index: 2,
+                  child: PropertiesPanel(
+                    selectedSpotIds: _selectedSpotIds,
+                    selectedRoadIds: _selectedRoadIds,
+                    selectedObstacleIds: _selectedObstacleIds,
+                    grid: _grid,
+                    onDeleteSelected: _deleteAllSelected,
+                    onRotateSelected: _rotateSelectedSpots,
+                    onRotateSpot: _rotateSpot,
+                    onDeleteRoads: _deleteSelectedRoads,
+                    onDeleteObstacles: _deleteSelectedObstacles,
+                    onStateChanged: () {
+                      setState(() {});
+                      _saveState();
+                    },
+                  ),
+                ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolbar() {
-    return Container(
-      width: 80,
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          _buildToolButton(
-            icon: Icons.mouse,
-            label: 'Select',
-            tool: DesignerTool.select,
-          ),
-          const SizedBox(height: 8),
-          _buildToolButton(
-            icon: Icons.pan_tool,
-            label: 'Pan',
-            tool: DesignerTool.pan,
-          ),
-          const SizedBox(height: 8),
-          _buildToolButton(
-            icon: Icons.add_box,
-            label: 'Add',
-            tool: DesignerTool.addSpot,
-          ),
-          const SizedBox(height: 8),
-          _buildToolButton(
-            icon: Icons.delete,
-            label: 'Delete',
-            tool: DesignerTool.delete,
-          ),
-          const SizedBox(height: 8),
-          _buildToolButton(
-            icon: Icons.straighten,
-            label: 'Ruler',
-            tool: DesignerTool.ruler,
-          ),
-          const SizedBox(height: 8),
-          _buildToolButton(
-            icon: Icons.rotate_right,
-            label: 'Rotate (R)',
-            tool: DesignerTool.rotate,
-          ),
-          const Divider(height: 32),
-          _buildSpotTypeButton(
-              SpotType.regular, Icons.local_parking, 'Regular'),
-          const SizedBox(height: 8),
-          _buildSpotTypeButton(
-              SpotType.handicapped, Icons.accessible, 'Accessible'),
-          const SizedBox(height: 8),
-          _buildSpotTypeButton(SpotType.evCharging, Icons.ev_station, 'EV'),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.delete_forever, color: Colors.red),
-            onPressed: _clearAll,
-            tooltip: 'Clear All',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolButton({
-    required IconData icon,
-    required String label,
-    required DesignerTool tool,
-  }) {
-    final isSelected = _currentTool == tool;
-    return Tooltip(
-      message: label,
-      child: InkWell(
-        onTap: () => setState(() => _currentTool = tool),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Theme.of(context).primaryColor.withValues(alpha: 0.3)
-                : Theme.of(context).cardTheme.color,
-            borderRadius: BorderRadius.circular(12),
-            border: isSelected
-                ? Border.all(color: Theme.of(context).primaryColor, width: 2)
-                : null,
-          ),
-          child: Icon(
-            icon,
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : Theme.of(context).iconTheme.color,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSpotTypeButton(SpotType type, IconData icon, String label) {
-    final isSelected = _selectedSpotType == type;
-    final color = _getSpotColor(type);
-    return Tooltip(
-      message: label,
-      child: InkWell(
-        onTap: () => setState(() => _selectedSpotType = type),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? color.withValues(alpha: 0.3)
-                : Theme.of(context).cardTheme.color,
-            borderRadius: BorderRadius.circular(12),
-            border: isSelected ? Border.all(color: color, width: 2) : null,
-          ),
-          child: Icon(icon, color: color),
         ),
       ),
     );
@@ -563,23 +1065,37 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                   const BorderRadius.vertical(top: Radius.circular(16)),
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  // Capture viewport size and center on first build
+                  final currentSize =
+                      Size(constraints.maxWidth, constraints.maxHeight);
+                  if (_canvasViewportSize == null &&
+                      currentSize.width > 0 &&
+                      currentSize.height > 0) {
+                    _canvasViewportSize = currentSize;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _centerCanvas();
+                    });
+                  }
                   return MouseRegion(
                     onHover: (event) {
                       final localPosition =
                           _transformController.toScene(event.localPosition);
-                      setState(() {
-                        _cursorPosition = localPosition;
-                        // Check if hovering over ruler with delete tool
-                        _isHoveringRuler = _currentTool ==
-                                DesignerTool.delete &&
-                            _isNearRuler(localPosition.dx, localPosition.dy);
-                      });
+                      // Update values without setState - use notifier for canvas updates only
+                      _cursorPosition = localPosition;
+                      final wasHovering = _isHoveringRuler;
+                      _isHoveringRuler = _currentTool == DesignerTool.delete &&
+                          _isNearRuler(localPosition.dx, localPosition.dy);
+                      // Only trigger repaint if hover state changed
+                      if (wasHovering != _isHoveringRuler) {
+                        _dragUpdateNotifier.value++;
+                      }
                     },
                     onExit: (_) {
-                      setState(() {
-                        _cursorPosition = null;
+                      _cursorPosition = null;
+                      if (_isHoveringRuler) {
                         _isHoveringRuler = false;
-                      });
+                        _dragUpdateNotifier.value++;
+                      }
                     },
                     child: Listener(
                       onPointerDown: (event) {
@@ -602,17 +1118,58 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                                 );
                                 // Auto-select the spot being dragged
                                 if (!_selectedSpotIds.contains(spotId)) {
-                                  _selectedSpotIds.clear();
+                                  _clearAllSelections();
                                   _selectedSpotIds.add(spotId);
                                 }
                               });
                             }
                           } else {
-                            // Start box selection on empty area
-                            setState(() {
-                              _dragStart = localPosition;
-                              _dragEnd = localPosition;
-                            });
+                            // Check if clicking on a road
+                            final roadId =
+                                _findRoadAt(localPosition.dx, localPosition.dy);
+                            if (roadId != null) {
+                              final road = _grid.findRoad(roadId);
+                              if (road != null) {
+                                setState(() {
+                                  _draggingRoadId = roadId;
+                                  _roadDragOffset = Offset(
+                                    localPosition.dx - road.x,
+                                    localPosition.dy - road.y,
+                                  );
+                                  if (!_selectedRoadIds.contains(roadId)) {
+                                    _clearAllSelections();
+                                    _selectedRoadIds.add(roadId);
+                                  }
+                                });
+                              }
+                            } else {
+                              // Check if clicking on an obstacle
+                              final obstacleId = _findObstacleAt(
+                                  localPosition.dx, localPosition.dy);
+                              if (obstacleId != null) {
+                                final obstacle = _grid.findObstacle(obstacleId);
+                                if (obstacle != null) {
+                                  setState(() {
+                                    _draggingObstacleId = obstacleId;
+                                    _obstacleDragOffset = Offset(
+                                      localPosition.dx - obstacle.x,
+                                      localPosition.dy - obstacle.y,
+                                    );
+                                    if (!_selectedObstacleIds
+                                        .contains(obstacleId)) {
+                                      _clearAllSelections();
+                                      _selectedObstacleIds.add(obstacleId);
+                                    }
+                                  });
+                                }
+                              } else {
+                                // Start box selection on empty area
+                                setState(() {
+                                  _dragStart = localPosition;
+                                  _dragEnd = localPosition;
+                                });
+                              }
+                            }
                           }
                         } else if (_currentTool == DesignerTool.addSpot) {
                           _addSpotAt(localPosition.dx, localPosition.dy);
@@ -636,6 +1193,18 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                           if (spotId != null) {
                             _rotateSpot(spotId);
                           }
+                        } else if (_currentTool == DesignerTool.addRoad) {
+                          // Start drawing a road
+                          setState(() {
+                            _roadDrawStart = localPosition;
+                            _roadDrawEnd = localPosition;
+                          });
+                        } else if (_currentTool == DesignerTool.addObstacle) {
+                          // Place an obstacle at click position
+                          _addObstacleAt(localPosition.dx, localPosition.dy);
+                        } else if (_currentTool == DesignerTool.addEntrance) {
+                          // Place an entrance/exit at click position
+                          _addEntranceAt(localPosition.dx, localPosition.dy);
                         }
                       },
                       onPointerMove: (event) {
@@ -644,35 +1213,69 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                         if (_currentTool == DesignerTool.select) {
                           if (_draggingSpotId != null &&
                               _spotDragOffset != null) {
-                            // Dragging a spot - move it
+                            // Dragging a spot - move it (no setState, use notifier)
                             final spot = _grid.findSpot(_draggingSpotId!);
                             if (spot != null) {
-                              setState(() {
-                                // Calculate new position
-                                final newX =
-                                    localPosition.dx - _spotDragOffset!.dx;
-                                final newY =
-                                    localPosition.dy - _spotDragOffset!.dy;
-                                // Snap to grid and clamp within canvas bounds
-                                spot.x = _grid
-                                    .snapToGrid(newX)
-                                    .clamp(0, _grid.canvasWidth - spot.width);
-                                spot.y = _grid
-                                    .snapToGrid(newY)
-                                    .clamp(0, _grid.canvasHeight - spot.height);
-                              });
+                              final newX =
+                                  localPosition.dx - _spotDragOffset!.dx;
+                              final newY =
+                                  localPosition.dy - _spotDragOffset!.dy;
+                              spot.x = _grid
+                                  .snapToGrid(newX)
+                                  .clamp(0, _grid.canvasWidth - spot.width);
+                              spot.y = _grid
+                                  .snapToGrid(newY)
+                                  .clamp(0, _grid.canvasHeight - spot.height);
+                              _dragUpdateNotifier.value++;
+                            }
+                          } else if (_draggingRoadId != null &&
+                              _roadDragOffset != null) {
+                            // Dragging a road - move it (no setState, use notifier)
+                            final road = _grid.findRoad(_draggingRoadId!);
+                            if (road != null) {
+                              final newX =
+                                  localPosition.dx - _roadDragOffset!.dx;
+                              final newY =
+                                  localPosition.dy - _roadDragOffset!.dy;
+                              road.x = _grid
+                                  .snapToGrid(newX)
+                                  .clamp(0, _grid.canvasWidth - road.width);
+                              road.y = _grid
+                                  .snapToGrid(newY)
+                                  .clamp(0, _grid.canvasHeight - road.height);
+                              _dragUpdateNotifier.value++;
+                            }
+                          } else if (_draggingObstacleId != null &&
+                              _obstacleDragOffset != null) {
+                            // Dragging an obstacle - move it (no setState, use notifier)
+                            final obstacle =
+                                _grid.findObstacle(_draggingObstacleId!);
+                            if (obstacle != null) {
+                              final newX =
+                                  localPosition.dx - _obstacleDragOffset!.dx;
+                              final newY =
+                                  localPosition.dy - _obstacleDragOffset!.dy;
+                              obstacle.x = _grid
+                                  .snapToGrid(newX)
+                                  .clamp(0, _grid.canvasWidth - obstacle.width);
+                              obstacle.y = _grid.snapToGrid(newY).clamp(
+                                  0, _grid.canvasHeight - obstacle.height);
+                              _dragUpdateNotifier.value++;
                             }
                           } else if (_dragStart != null) {
                             // Box selection
-                            setState(() {
-                              _dragEnd = localPosition;
-                            });
+                            _dragEnd = localPosition;
+                            _dragUpdateNotifier.value++;
                           }
                         } else if (_currentTool == DesignerTool.ruler &&
                             _rulerStart != null) {
-                          setState(() {
-                            _rulerEnd = localPosition;
-                          });
+                          _rulerEnd = localPosition;
+                          _dragUpdateNotifier.value++;
+                        } else if (_currentTool == DesignerTool.addRoad &&
+                            _roadDrawStart != null) {
+                          // Update road preview
+                          _roadDrawEnd = localPosition;
+                          _dragUpdateNotifier.value++;
                         }
                       },
                       onPointerUp: (event) {
@@ -684,6 +1287,20 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                               _spotDragOffset = null;
                             });
                             _saveState();
+                          } else if (_draggingRoadId != null) {
+                            // Finished dragging a road
+                            setState(() {
+                              _draggingRoadId = null;
+                              _roadDragOffset = null;
+                            });
+                            _saveState();
+                          } else if (_draggingObstacleId != null) {
+                            // Finished dragging an obstacle
+                            setState(() {
+                              _draggingObstacleId = null;
+                              _obstacleDragOffset = null;
+                            });
+                            _saveState();
                           } else if (_dragStart != null) {
                             // Box selection
                             final localPosition = _transformController
@@ -691,8 +1308,8 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                             final dragDistance =
                                 (_dragStart! - localPosition).distance;
                             if (dragDistance < 5) {
-                              _selectSpotAt(localPosition.dx, localPosition.dy,
-                                  isMultiSelect: false);
+                              _selectElementAt(
+                                  localPosition.dx, localPosition.dy);
                             } else {
                               _updateSelectionFromDrag();
                             }
@@ -701,6 +1318,29 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                               _dragEnd = null;
                             });
                           }
+                        } else if (_currentTool == DesignerTool.addRoad &&
+                            _roadDrawStart != null) {
+                          // Complete road creation
+                          final localPosition =
+                              _transformController.toScene(event.localPosition);
+                          final dragDistance =
+                              (_roadDrawStart! - localPosition).distance;
+                          if (dragDistance > 20) {
+                            // Minimum drag distance for road
+                            _addRoadAt(
+                              _roadDrawStart!.dx,
+                              _roadDrawStart!.dy,
+                              endX: localPosition.dx,
+                              endY: localPosition.dy,
+                            );
+                          } else {
+                            // Click without drag - place default road
+                            _addRoadAt(localPosition.dx, localPosition.dy);
+                          }
+                          setState(() {
+                            _roadDrawStart = null;
+                            _roadDrawEnd = null;
+                          });
                         }
                         // Ruler keeps its position after pointer up (doesn't reset)
                       },
@@ -730,17 +1370,31 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                                 ),
                               ],
                             ),
-                            child: CustomPaint(
-                              size: Size(_grid.canvasWidth, _grid.canvasHeight),
-                              painter: GridPainter(
-                                grid: _grid,
-                                selectedSpotIds: _selectedSpotIds,
-                                dragStart: _dragStart,
-                                dragEnd: _dragEnd,
-                                rulerStart: _rulerStart,
-                                rulerEnd: _rulerEnd,
-                                isHoveringRuler: _isHoveringRuler,
-                              ),
+                            child: ValueListenableBuilder<int>(
+                              valueListenable: _dragUpdateNotifier,
+                              builder: (context, _, __) {
+                                return RepaintBoundary(
+                                  child: CustomPaint(
+                                    size: Size(
+                                        _grid.canvasWidth, _grid.canvasHeight),
+                                    painter: GridPainter(
+                                      grid: _grid,
+                                      selectedSpotIds: _selectedSpotIds,
+                                      selectedRoadIds: _selectedRoadIds,
+                                      selectedObstacleIds: _selectedObstacleIds,
+                                      dragStart: _dragStart,
+                                      dragEnd: _dragEnd,
+                                      rulerStart: _rulerStart,
+                                      rulerEnd: _rulerEnd,
+                                      isHoveringRuler: _isHoveringRuler,
+                                      roadDrawStart: _roadDrawStart,
+                                      roadDrawEnd: _roadDrawEnd,
+                                      repaintToken: _dragUpdateNotifier.value,
+                                      showPaths: _showPaths,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -921,475 +1575,40 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     if (_dragStart == null || _dragEnd == null) return;
 
     final rect = Rect.fromPoints(_dragStart!, _dragEnd!);
-    final newSelection = <String>{};
+    final newSpotSelection = <String>{};
+    final newRoadSelection = <String>{};
+    final newObstacleSelection = <String>{};
 
+    // Select spots that overlap with the drag rectangle
     for (final spot in _grid.spots) {
       final spotRect = Rect.fromLTWH(spot.x, spot.y, spot.width, spot.height);
       if (rect.overlaps(spotRect)) {
-        newSelection.add(spot.id);
+        newSpotSelection.add(spot.id);
       }
     }
 
-    _selectedSpotIds.clear();
-    _selectedSpotIds.addAll(newSelection);
-  }
-
-  Widget _buildPropertiesPanel() {
-    if (_selectedSpotIds.isEmpty) return const SizedBox.shrink();
-
-    // If only one spot is selected, show full details
-    if (_selectedSpotIds.length == 1) {
-      final spot = _grid.findSpot(_selectedSpotIds.first);
-      if (spot == null) return const SizedBox.shrink();
-      return _buildSingleSpotProperties(spot);
+    // Select roads that overlap with the drag rectangle
+    for (final road in _grid.roads) {
+      final roadRect = Rect.fromLTWH(road.x, road.y, road.width, road.height);
+      if (rect.overlaps(roadRect)) {
+        newRoadSelection.add(road.id);
+      }
     }
 
-    // If multiple spots are selected, show bulk edit options
-    return _buildMultiSpotProperties();
-  }
-
-  Widget _buildSingleSpotProperties(ParkingSpot spot) {
-    return Container(
-      width: 200,
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Spot Properties',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 16),
-          _buildTextField('ID', spot.id, (val) {
-            // ID editing logic...
-          }, enabled: false, key: ValueKey('id_${spot.id}')),
-          const SizedBox(height: 8),
-          _buildNumberField('X', spot.x, (val) {
-            setState(() => spot.x = val);
-            _saveState();
-          }, key: ValueKey('x_${spot.id}')),
-          const SizedBox(height: 8),
-          _buildNumberField('Y', spot.y, (val) {
-            setState(() => spot.y = val);
-            _saveState();
-          }, key: ValueKey('y_${spot.id}')),
-          const SizedBox(height: 8),
-          _buildNumberField('Width', spot.width, (val) {
-            setState(() => spot.width = val);
-            _saveState();
-          }, key: ValueKey('w_${spot.id}')),
-          const SizedBox(height: 8),
-          _buildNumberField('Height', spot.height, (val) {
-            setState(() => spot.height = val);
-            _saveState();
-          }, key: ValueKey('h_${spot.id}')),
-          const SizedBox(height: 8),
-          Text('Type: ${spot.type.name}',
-              style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 16),
-          DropdownButton<SpotType>(
-            value: spot.type,
-            isExpanded: true,
-            dropdownColor: Theme.of(context).cardTheme.color,
-            items: SpotType.values.map((type) {
-              return DropdownMenuItem(
-                value: type,
-                child: Text(type.name),
-              );
-            }).toList(),
-            onChanged: (newType) {
-              if (newType != null) {
-                setState(() {
-                  spot.type = newType;
-                });
-                _saveState();
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _rotateSpot(spot.id),
-                  icon: const Icon(Icons.rotate_right, size: 18),
-                  label: const Text('Rotate'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    minimumSize: const Size(0, 40),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: _deleteSelectedSpot,
-            icon: const Icon(Icons.delete, size: 18),
-            label: const Text('Delete'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              minimumSize: const Size(double.infinity, 40),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMultiSpotProperties() {
-    return Container(
-      width: 200,
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '${_selectedSpotIds.length} Spots Selected',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Bulk Edit',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          DropdownButton<SpotType>(
-            isExpanded: true,
-            hint: const Text("Change Type"),
-            dropdownColor: Theme.of(context).cardTheme.color,
-            items: SpotType.values.map((type) {
-              return DropdownMenuItem(
-                value: type,
-                child: Text(type.name),
-              );
-            }).toList(),
-            onChanged: (newType) {
-              if (newType != null) {
-                setState(() {
-                  for (final id in _selectedSpotIds) {
-                    final spot = _grid.findSpot(id);
-                    if (spot != null) spot.type = newType;
-                  }
-                });
-                _saveState();
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _rotateSelectedSpots,
-            icon: const Icon(Icons.rotate_right, size: 18),
-            label: const Text('Rotate All'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              minimumSize: const Size(double.infinity, 40),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: _deleteSelectedSpot,
-            icon: const Icon(Icons.delete, size: 18),
-            label: const Text('Delete Selected'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              minimumSize: const Size(double.infinity, 40),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, String value, Function(String) onChanged,
-      {bool enabled = true, Key? key}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style:
-                Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12)),
-        SizedBox(
-          height: 30,
-          child: TextFormField(
-            key: key,
-            initialValue: value,
-            enabled: enabled,
-            style: const TextStyle(fontSize: 12),
-            decoration: const InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              border: OutlineInputBorder(),
-            ),
-            onChanged: onChanged,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNumberField(
-      String label, double value, Function(double) onChanged,
-      {Key? key}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style:
-                Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12)),
-        SizedBox(
-          height: 30,
-          child: TextFormField(
-            key: key,
-            initialValue: value.toString(),
-            keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 12),
-            decoration: const InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (val) {
-              final num = double.tryParse(val);
-              if (num != null) onChanged(num);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Color _getSpotColor(SpotType type) {
-    switch (type) {
-      case SpotType.regular:
-        return Colors.green;
-      case SpotType.handicapped:
-        return Colors.blue;
-      case SpotType.evCharging:
-        return Colors.orange;
-    }
-  }
-}
-
-/// Custom painter for rendering the parking grid
-class GridPainter extends CustomPainter {
-  final ParkingGrid grid;
-  final Set<String> selectedSpotIds;
-  final Offset? dragStart;
-  final Offset? dragEnd;
-  final Offset? rulerStart;
-  final Offset? rulerEnd;
-  final bool isHoveringRuler;
-  final int spotCount; // Track spot count to detect deletions
-
-  GridPainter({
-    required this.grid,
-    required this.selectedSpotIds,
-    this.dragStart,
-    this.dragEnd,
-    this.rulerStart,
-    this.rulerEnd,
-    this.isHoveringRuler = false,
-  }) : spotCount = grid.spots.length;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.1)
-      ..strokeWidth = 1;
-
-    // Draw grid lines
-    for (double x = 0; x <= grid.canvasWidth; x += grid.gridSize) {
-      canvas.drawLine(Offset(x, 0), Offset(x, grid.canvasHeight), gridPaint);
-    }
-    for (double y = 0; y <= grid.canvasHeight; y += grid.gridSize) {
-      canvas.drawLine(Offset(0, y), Offset(grid.canvasWidth, y), gridPaint);
+    // Select obstacles that overlap with the drag rectangle
+    for (final obstacle in _grid.obstacles) {
+      final obstacleRect = Rect.fromLTWH(
+          obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      if (rect.overlaps(obstacleRect)) {
+        newObstacleSelection.add(obstacle.id);
+      }
     }
 
-    // Draw parking spots
-    for (final spot in grid.spots) {
-      final isSelected = selectedSpotIds.contains(spot.id);
-      _drawSpot(canvas, spot, isSelected);
-    }
-
-    // Draw drag selection rectangle
-    if (dragStart != null && dragEnd != null) {
-      final selectionRect = Rect.fromPoints(dragStart!, dragEnd!);
-      final selectionPaint = Paint()
-        ..color = Colors.blue.withValues(alpha: 0.2)
-        ..style = PaintingStyle.fill;
-
-      final selectionBorderPaint = Paint()
-        ..color = Colors.blue.withValues(alpha: 0.5)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-
-      canvas.drawRect(selectionRect, selectionPaint);
-      canvas.drawRect(selectionRect, selectionBorderPaint);
-    }
-
-    // Draw ruler measurement line
-    if (rulerStart != null && rulerEnd != null) {
-      _drawRuler(canvas, rulerStart!, rulerEnd!);
-    }
-  }
-
-  void _drawRuler(Canvas canvas, Offset start, Offset end) {
-    final distance = (end - start).distance;
-
-    // Change color to red when hovering with delete tool
-    final rulerColor = isHoveringRuler ? Colors.red : Colors.amber;
-
-    // Main line
-    final linePaint = Paint()
-      ..color = rulerColor
-      ..strokeWidth = isHoveringRuler ? 3 : 2
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(start, end, linePaint);
-
-    // Start point circle
-    final pointPaint = Paint()
-      ..color = rulerColor
-      ..style = PaintingStyle.fill;
-
-    final pointRadius = isHoveringRuler ? 8.0 : 6.0;
-    canvas.drawCircle(start, pointRadius, pointPaint);
-    canvas.drawCircle(end, pointRadius, pointPaint);
-
-    // Inner white circle
-    final innerPointPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final innerRadius = isHoveringRuler ? 4.0 : 3.0;
-    canvas.drawCircle(start, innerRadius, innerPointPaint);
-    canvas.drawCircle(end, innerRadius, innerPointPaint);
-
-    // Distance label background
-    final midPoint = Offset((start.dx + end.dx) / 2, (start.dy + end.dy) / 2);
-    final labelText = isHoveringRuler
-        ? 'Click to delete'
-        : '${distance.toStringAsFixed(1)} px';
-
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: labelText,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-
-    // Draw label background
-    final labelRect = Rect.fromCenter(
-      center: midPoint,
-      width: textPainter.width + 12,
-      height: textPainter.height + 6,
-    );
-
-    final labelBgPaint = Paint()
-      ..color = rulerColor
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(labelRect, const Radius.circular(4)),
-      labelBgPaint,
-    );
-
-    // Draw label text
-    textPainter.paint(
-      canvas,
-      Offset(
-        midPoint.dx - textPainter.width / 2,
-        midPoint.dy - textPainter.height / 2,
-      ),
-    );
-  }
-
-  void _drawSpot(Canvas canvas, ParkingSpot spot, bool isSelected) {
-    final color = _getSpotColor(spot.type);
-    final rect = Rect.fromLTWH(spot.x, spot.y, spot.width, spot.height);
-
-    // Fill
-    final fillPaint = Paint()
-      ..color = color.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
-      fillPaint,
-    );
-
-    // Border
-    final borderPaint = Paint()
-      ..color = isSelected ? Colors.white : color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isSelected ? 3 : 2;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
-      borderPaint,
-    );
-
-    // ID label
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: spot.id,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        spot.x + (spot.width - textPainter.width) / 2,
-        spot.y + (spot.height - textPainter.height) / 2,
-      ),
-    );
-  }
-
-  Color _getSpotColor(SpotType type) {
-    switch (type) {
-      case SpotType.regular:
-        return Colors.green;
-      case SpotType.handicapped:
-        return Colors.blue;
-      case SpotType.evCharging:
-        return Colors.orange;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant GridPainter oldDelegate) {
-    return spotCount != oldDelegate.spotCount ||
-        !setEquals(selectedSpotIds, oldDelegate.selectedSpotIds) ||
-        dragStart != oldDelegate.dragStart ||
-        dragEnd != oldDelegate.dragEnd ||
-        rulerStart != oldDelegate.rulerStart ||
-        rulerEnd != oldDelegate.rulerEnd ||
-        isHoveringRuler != oldDelegate.isHoveringRuler;
+    setState(() {
+      _clearAllSelections();
+      _selectedSpotIds.addAll(newSpotSelection);
+      _selectedRoadIds.addAll(newRoadSelection);
+      _selectedObstacleIds.addAll(newObstacleSelection);
+    });
   }
 }

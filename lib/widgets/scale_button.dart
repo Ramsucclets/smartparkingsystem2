@@ -77,12 +77,17 @@ class _ScaleButtonState extends State<ScaleButton>
         onTapDown: _onTapDown,
         onTapUp: _onTapUp,
         onTapCancel: _onTapCancel,
-        child: ScaleTransition(
-          scale: _hoverAnimation,
-          child: ScaleTransition(
-            scale: _tapAnimation,
-            child: widget.child,
-          ),
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_tapController, _hoverController]),
+          builder: (context, child) {
+            // Combine both scale values for single transform
+            final combinedScale = _tapAnimation.value * _hoverAnimation.value;
+            return Transform.scale(
+              scale: combinedScale,
+              child: child,
+            );
+          },
+          child: widget.child, // Child is cached, not rebuilt
         ),
       ),
     );

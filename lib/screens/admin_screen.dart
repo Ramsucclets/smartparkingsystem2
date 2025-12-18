@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/fade_slide_transition.dart';
 import 'admin/grid_designer_screen.dart';
+import 'admin/system_logs_screen.dart';
+import 'admin/user_management_screen.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -35,7 +37,12 @@ class AdminScreen extends StatelessWidget {
                 subtitle: 'Manage users and roles',
                 color: Colors.blueAccent,
                 onTap: () {
-                  // TODO: Navigate to User Management
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserManagementScreen(),
+                    ),
+                  );
                 },
               ),
             ),
@@ -61,7 +68,12 @@ class AdminScreen extends StatelessWidget {
                 subtitle: 'View system activity',
                 color: Colors.orangeAccent,
                 onTap: () {
-                  // TODO: Navigate to System Logs
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SystemLogsScreen(),
+                    ),
+                  );
                 },
               ),
             ),

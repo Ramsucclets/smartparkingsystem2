@@ -16,6 +16,12 @@ class ParkingSpot {
   SpotType type;
   String? label;
 
+  /// Pre-computed path from entrance to this spot (list of x,y coordinates)
+  List<Map<String, double>>? pathFromEntrance;
+
+  /// Pre-computed path from this spot to exit (list of x,y coordinates)
+  List<Map<String, double>>? pathToExit;
+
   ParkingSpot({
     required this.id,
     required this.x,
@@ -25,6 +31,8 @@ class ParkingSpot {
     this.rotation = 0,
     this.type = SpotType.regular,
     this.label,
+    this.pathFromEntrance,
+    this.pathToExit,
   });
 
   /// Create a copy of this spot with optional overrides
@@ -37,6 +45,8 @@ class ParkingSpot {
     double? rotation,
     SpotType? type,
     String? label,
+    List<Map<String, double>>? pathFromEntrance,
+    List<Map<String, double>>? pathToExit,
   }) {
     return ParkingSpot(
       id: id ?? this.id,
@@ -47,6 +57,8 @@ class ParkingSpot {
       rotation: rotation ?? this.rotation,
       type: type ?? this.type,
       label: label ?? this.label,
+      pathFromEntrance: pathFromEntrance ?? this.pathFromEntrance,
+      pathToExit: pathToExit ?? this.pathToExit,
     );
   }
 
@@ -61,6 +73,8 @@ class ParkingSpot {
       'rotation': rotation,
       'type': type.name,
       'label': label,
+      if (pathFromEntrance != null) 'pathFromEntrance': pathFromEntrance,
+      if (pathToExit != null) 'pathToExit': pathToExit,
     };
   }
 
@@ -78,6 +92,14 @@ class ParkingSpot {
         orElse: () => SpotType.regular,
       ),
       label: json['label'] as String?,
+      pathFromEntrance: (json['pathFromEntrance'] as List<dynamic>?)
+          ?.map((p) => Map<String, double>.from((p as Map)
+              .map((k, v) => MapEntry(k as String, (v as num).toDouble()))))
+          .toList(),
+      pathToExit: (json['pathToExit'] as List<dynamic>?)
+          ?.map((p) => Map<String, double>.from((p as Map)
+              .map((k, v) => MapEntry(k as String, (v as num).toDouble()))))
+          .toList(),
     );
   }
 

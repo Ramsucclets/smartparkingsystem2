@@ -62,15 +62,18 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  // Dark Theme
+  // Dark Theme - Teal/Cyan color scheme matching logo
   ThemeData get _darkTheme => ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF1E1E2C),
-        primaryColor: const Color(0xFF6C63FF),
+        scaffoldBackgroundColor: const Color(0xFF0D1B2A),
+        primaryColor: const Color(0xFF00BFA5),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
+          seedColor: const Color(0xFF00BFA5),
           brightness: Brightness.dark,
-          surface: const Color(0xFF2D2D44),
+          primary: const Color(0xFF00BFA5),
+          secondary: const Color(0xFF00ACC1),
+          tertiary: const Color(0xFF26A69A),
+          surface: const Color(0xFF1B3A4B),
         ),
         useMaterial3: true,
         fontFamily: 'Roboto',
@@ -88,33 +91,33 @@ class _MyAppState extends State<MyApp> {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFF2D2D44),
+          fillColor: const Color(0xFF1B3A4B),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF2D4A5A), width: 1),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF00BFA5), width: 2),
           ),
           labelStyle: const TextStyle(color: Color(0xFFA0A0B0)),
-          prefixIconColor: const Color(0xFF6C63FF),
+          prefixIconColor: const Color(0xFF00BFA5),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6C63FF),
+            backgroundColor: const Color(0xFF00BFA5),
             foregroundColor: Colors.white,
             elevation: 8,
-            shadowColor: const Color(0xFF6C63FF).withValues(alpha: 0.5),
+            shadowColor: const Color(0xFF00BFA5).withValues(alpha: 0.4),
             minimumSize: const Size(double.infinity, 56),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             textStyle: const TextStyle(
               fontSize: 18,
@@ -124,9 +127,9 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFF2D2D44),
+          color: const Color(0xFF1B3A4B),
           elevation: 4,
-          shadowColor: Colors.black26,
+          shadowColor: Colors.black38,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -143,14 +146,17 @@ class _MyAppState extends State<MyApp> {
         ),
       );
 
-  // Light Theme
+  // Light Theme - Teal/Cyan color scheme matching logo
   ThemeData get _lightTheme => ThemeData(
         brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        primaryColor: const Color(0xFF6C63FF),
+        scaffoldBackgroundColor: const Color(0xFFF0F9F8),
+        primaryColor: const Color(0xFF00897B),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
+          seedColor: const Color(0xFF00897B),
           brightness: Brightness.light,
+          primary: const Color(0xFF00897B),
+          secondary: const Color(0xFF0097A7),
+          tertiary: const Color(0xFF00796B),
           surface: Colors.white,
         ),
         useMaterial3: true,
@@ -159,15 +165,15 @@ class _MyAppState extends State<MyApp> {
           headlineMedium: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1E1E2C),
+            color: Color(0xFF0D1B2A),
             letterSpacing: 1.2,
           ),
           bodyLarge: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF1E1E2C)),
-          bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF4A4A5A)),
-          bodySmall: TextStyle(fontSize: 12, color: Color(0xFF6B6B7B)),
+              color: Color(0xFF0D1B2A)),
+          bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF4A5568)),
+          bodySmall: TextStyle(fontSize: 12, color: Color(0xFF718096)),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -175,29 +181,29 @@ class _MyAppState extends State<MyApp> {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFB2DFDB)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFB2DFDB)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF00897B), width: 2),
           ),
-          labelStyle: const TextStyle(color: Color(0xFF6B6B7B)),
-          prefixIconColor: const Color(0xFF6C63FF),
+          labelStyle: const TextStyle(color: Color(0xFF718096)),
+          prefixIconColor: const Color(0xFF00897B),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6C63FF),
+            backgroundColor: const Color(0xFF00897B),
             foregroundColor: Colors.white,
             elevation: 4,
-            shadowColor: const Color(0xFF6C63FF).withValues(alpha: 0.3),
+            shadowColor: const Color(0xFF00897B).withValues(alpha: 0.3),
             minimumSize: const Size(double.infinity, 56),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             textStyle: const TextStyle(
               fontSize: 18,
@@ -209,7 +215,7 @@ class _MyAppState extends State<MyApp> {
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 2,
-          shadowColor: Colors.black12,
+          shadowColor: const Color(0xFF00897B).withValues(alpha: 0.1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -217,9 +223,9 @@ class _MyAppState extends State<MyApp> {
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          iconTheme: IconThemeData(color: Color(0xFF1E1E2C)),
+          iconTheme: IconThemeData(color: Color(0xFF0D1B2A)),
           titleTextStyle: TextStyle(
-            color: Color(0xFF1E1E2C),
+            color: Color(0xFF0D1B2A),
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
