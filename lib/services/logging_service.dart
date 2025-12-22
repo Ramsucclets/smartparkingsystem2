@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import '../models/system_log.dart';
 
 /// Singleton service for managing system logs
@@ -127,7 +128,7 @@ class LoggingService {
     _logStreamController.add(logs);
 
     // Also print to console for debugging
-    print('[${level.displayName}] ${category.displayName}: $message');
+    developer.log('[${level.displayName}] ${category.displayName}: $message');
   }
 
   /// Log an info message

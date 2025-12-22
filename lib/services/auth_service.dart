@@ -36,6 +36,9 @@ class AuthService {
   /// Track the currently active pool type
   static CognitoPoolType _currentPoolType = CognitoPoolType.user;
 
+  /// Debug flag to bypass authentication and force superAdmin role
+  static bool debugSuperAdminMode = false;
+
   /// Get the current pool type
   static CognitoPoolType get currentPoolType => _currentPoolType;
 
@@ -220,6 +223,11 @@ class AuthService {
 
   /// Get the current user's role based on pool type and groups
   Future<UserRole> getUserRole() async {
+    // Check for debug override first
+    if (debugSuperAdminMode) {
+      return UserRole.superAdmin;
+    }
+
     // Check if user is signed in
     final isSignedIn = await isUserSignedIn();
     if (!isSignedIn) {

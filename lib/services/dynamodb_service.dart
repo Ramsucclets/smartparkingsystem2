@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 
 /// Model class for parking spot data from DynamoDB
@@ -43,7 +44,7 @@ class DynamoDBService {
   /// Note: Requires a GET endpoint in your Lambda
   Future<List<ParkingSpotData>> fetchParkingSpots() async {
     try {
-      print('Fetching from: $_baseUrl');
+      developer.log('Fetching from: $_baseUrl');
 
       final response = await http.get(
         Uri.parse(_baseUrl),
@@ -52,8 +53,8 @@ class DynamoDBService {
         },
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      developer.log('Response status: ${response.statusCode}');
+      developer.log('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -62,13 +63,25 @@ class DynamoDBService {
         List<dynamic> items;
         if (data is List) {
           items = data;
+        } else if (data is Map && data.containsKey('spots')) {
+          // Handle new Lambda format: {success: true, spots: [...]}
+          items = data['spots'];
         } else if (data is Map && data.containsKey('items')) {
           items = data['items'];
         } else if (data is Map && data.containsKey('body')) {
           // Handle Lambda proxy response
           final body = data['body'];
           if (body is String) {
-            items = jsonDecode(body);
+            final parsedBody = jsonDecode(body);
+            if (parsedBody is Map && parsedBody.containsKey('spots')) {
+              items = parsedBody['spots'];
+            } else if (parsedBody is List) {
+              items = parsedBody;
+            } else {
+              items = [parsedBody];
+            }
+          } else if (body is Map && body.containsKey('spots')) {
+            items = body['spots'];
           } else {
             items = body is List ? body : [body];
           }
@@ -82,11 +95,11 @@ class DynamoDBService {
             'Failed to fetch parking spots: ${response.statusCode} - ${response.body}');
       }
     } on http.ClientException catch (e) {
-      print('ClientException: $e');
+      developer.log('ClientException: $e');
       throw Exception(
           'Network error - CORS may be blocking the request. Error: $e');
     } catch (e) {
-      print('Error: $e');
+      developer.log('Error: $e');
       throw Exception('Error fetching parking data: $e');
     }
   }
@@ -136,6 +149,62 @@ class DynamoDBService {
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Initialize/sync spot IDs to DynamoDB
+  /// Creates spots as "Available" if they don't exist in the database
+  /// Returns a map of spotId -> availability (true = available)
+  Future<Map<String, bool>> initializeSpots(List<String> spotIds) async {
+    final Map<String, bool> availability = {};
+
+    try {
+      // First, fetch all existing spots
+      final existingSpots = await fetchParkingSpots();
+      final existingIds = existingSpots.map((s) => s.spotId).toSet();
+
+      // Mark existing spots with their current availability
+      for (final spot in existingSpots) {
+        availability[spot.spotId] = !spot.isOccupied;
+      }
+
+      // Find spots that don't exist in DynamoDB yet
+      final missingSpotIds =
+          spotIds.where((id) => !existingIds.contains(id)).toList();
+
+      // Initialize missing spots as "Available"
+      for (final spotId in missingSpotIds) {
+        try {
+          final response = await http.post(
+            Uri.parse(_baseUrl),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'spotId': spotId,
+              'status': 'Available',
+            }),
+          );
+
+          if (response.statusCode == 200) {
+            availability[spotId] = true; // New spots are available
+            developer.log('Initialized spot $spotId in DynamoDB');
+          }
+        } catch (e) {
+          developer.log('Failed to initialize spot $spotId: $e');
+          // Still mark as available locally so UI shows correctly
+          availability[spotId] = true;
+        }
+      }
+
+      return availability;
+    } catch (e) {
+      developer.log('Error initializing spots: $e');
+      // If fetch fails, assume all spots are available
+      for (final spotId in spotIds) {
+        availability[spotId] = true;
+      }
+      return availability;
     }
   }
 }

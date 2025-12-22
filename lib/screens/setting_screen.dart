@@ -243,7 +243,7 @@ class _SettingScreenState extends State<SettingScreen> {
                         ),
                         Switch.adaptive(
                           value: isDark,
-                          activeColor: primaryColor,
+                          activeTrackColor: primaryColor,
                           onChanged: (_) => themeProvider.toggleTheme(),
                         ),
                       ],

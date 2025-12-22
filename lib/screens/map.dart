@@ -132,24 +132,24 @@ class _MapScreenState extends State<MapScreen> {
 
     // Apply the transform
     _transformController.value = Matrix4.identity()
-      ..translate(translateX, translateY)
-      ..scale(scale);
+      ..translateByDouble(translateX, translateY, 0.0, 1.0)
+      ..scaleByDouble(scale, scale, 1.0, 1.0);
   }
 
   void _initializeGrid() {
     // Create a sample grid (in real app, load from JSON/backend)
     _grid = ParkingGrid.empty(name: 'Main Parking Lot');
 
-    // Add sample spots
+    // Add sample spots matching DynamoDB spot IDs (A1, A2, A3, etc.)
     final spots = [
       ParkingSpot(id: 'A1', x: 50, y: 50, type: SpotType.regular),
       ParkingSpot(id: 'A2', x: 50, y: 160, type: SpotType.regular),
       ParkingSpot(id: 'A3', x: 50, y: 270, type: SpotType.regular),
       ParkingSpot(id: 'A4', x: 50, y: 380, type: SpotType.handicapped),
-      ParkingSpot(id: 'B1', x: 180, y: 50, type: SpotType.regular),
-      ParkingSpot(id: 'B2', x: 180, y: 160, type: SpotType.evCharging),
-      ParkingSpot(id: 'B3', x: 180, y: 270, type: SpotType.regular),
-      ParkingSpot(id: 'B4', x: 180, y: 380, type: SpotType.regular),
+      ParkingSpot(id: 'A5', x: 180, y: 50, type: SpotType.regular),
+      ParkingSpot(id: 'A6', x: 180, y: 160, type: SpotType.evCharging),
+      ParkingSpot(id: 'A7', x: 180, y: 270, type: SpotType.regular),
+      ParkingSpot(id: 'A8', x: 180, y: 380, type: SpotType.regular),
     ];
 
     for (final spot in spots) {
@@ -187,8 +187,17 @@ class _MapScreenState extends State<MapScreen> {
                 "${_grid.name} - ${_grid.spots.length} spots, ${_grid.roads.length} roads";
           });
 
-          // Fetch real availability from backend
-          await _fetchParkingData();
+          // Initialize spots in DynamoDB and get their availability
+          // This creates any missing spots and fetches current status
+          final spotIds = _grid.spots.map((s) => s.id).toList();
+          final availability = await _dynamoDBService.initializeSpots(spotIds);
+
+          if (mounted) {
+            setState(() {
+              _spotAvailability.addAll(availability);
+              _isLoading = false;
+            });
+          }
 
           developer.log(
               'Loaded grid: ${_grid.name} with ${_grid.spots.length} spots');

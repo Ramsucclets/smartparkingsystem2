@@ -5,6 +5,8 @@ import 'home_screen.dart';
 import 'register_screen.dart';
 import 'resetpassword_screen.dart';
 
+enum LoginType { user, admin }
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  bool _debugSuperAdmin = false;
 
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
@@ -281,6 +284,90 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     const SizedBox(height: 32),
+
+                    // Debug Super Admin Toggle
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _debugSuperAdmin
+                            ? const Color(0xFF9C27B0).withValues(alpha: 0.15)
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.grey.withValues(alpha: 0.1)),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _debugSuperAdmin
+                              ? const Color(0xFF9C27B0).withValues(alpha: 0.5)
+                              : (isDark ? Colors.white12 : Colors.black12),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.bug_report,
+                            color: _debugSuperAdmin
+                                ? const Color(0xFF9C27B0)
+                                : (isDark ? Colors.white38 : Colors.black38),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Debug: Super Admin',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: _debugSuperAdmin
+                                        ? const Color(0xFF9C27B0)
+                                        : (isDark
+                                            ? Colors.white70
+                                            : Colors.black54),
+                                  ),
+                                ),
+                                Text(
+                                  'Skip login, instant admin access',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? Colors.white38
+                                        : Colors.black38,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch.adaptive(
+                            value: _debugSuperAdmin,
+                            activeTrackColor: const Color(0xFF9C27B0),
+                            onChanged: (value) {
+                              setState(() {
+                                _debugSuperAdmin = value;
+                                AuthService.debugSuperAdminMode = value;
+                              });
+                              if (value) {
+                                // Directly navigate to home as superAdmin
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const HomeScreen(
+                                      username: 'SuperAdmin (Debug)',
+                                      password: '',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
                     // Divider
                     Row(
