@@ -21,6 +21,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   String? _errorMessage;
   Timer? _refreshTimer;
   SpotFilter _currentFilter = SpotFilter.all;
+  final TextEditingController _searchController = TextEditingController();
 
   // Computed heuristics from parking data
   Map<String, int> get _hourlyOccupancy {
@@ -164,6 +165,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -194,14 +196,26 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   List<ParkingSpotData> get _filteredSpots {
+    List<ParkingSpotData> spots;
     switch (_currentFilter) {
       case SpotFilter.available:
-        return _parkingSpots.where((s) => !s.isOccupied).toList();
+        spots = _parkingSpots.where((s) => !s.isOccupied).toList();
       case SpotFilter.occupied:
-        return _parkingSpots.where((s) => s.isOccupied).toList();
+        spots = _parkingSpots.where((s) => s.isOccupied).toList();
       case SpotFilter.all:
-        return _parkingSpots;
+        spots = _parkingSpots;
     }
+
+    // Apply search filter
+    final searchQuery = _searchController.text;
+    if (searchQuery.isNotEmpty) {
+      spots = spots
+          .where(
+              (s) => s.spotId.toLowerCase().contains(searchQuery.toLowerCase()))
+          .toList();
+    }
+
+    return spots;
   }
 
   @override
@@ -780,6 +794,72 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               _buildRecentActivityTimeline(isDark),
               const SizedBox(height: 16),
             ],
+
+            // Search bar
+            _buildGlassCard(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.search_rounded,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                        style: TextStyle(
+                          color:
+                              isDark ? Colors.white : const Color(0xFF0D1B2A),
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search spot by ID...',
+                          hintStyle: TextStyle(
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    ),
+                    Visibility(
+                      visible: _searchController.text.isNotEmpty,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _searchController.clear();
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.grey.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // Filter chips
             SingleChildScrollView(

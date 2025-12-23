@@ -7,6 +7,7 @@ import '../widgets/glassmorphic_card.dart';
 import 'map.dart';
 import 'setting_screen.dart';
 import 'statistics_screen.dart';
+import 'spot_watch_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.username, super.key, required this.password});
@@ -239,6 +240,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
+                          builder: (context) => const SpotWatchScreen(),
+                        ),
+                      );
+                    },
+                    accentColor: const Color(0xFF00BFA5),
+                    child: _buildMenuContent(
+                      context,
+                      icon: Icons.visibility_rounded,
+                      title: 'Spot Watch',
+                      subtitle: 'Monitor a specific parking spot',
+                      color: const Color(0xFF00BFA5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FadeSlideTransition(
+                  index: 5,
+                  child: InteractiveGlassmorphicCard(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
                           builder: (context) => const StatisticsScreen(),
                         ),
                       );
@@ -255,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
                 FadeSlideTransition(
-                  index: 5,
+                  index: 6,
                   child: InteractiveGlassmorphicCard(
                     onTap: () {
                       Navigator.push(
@@ -280,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Footer
                 FadeSlideTransition(
-                  index: 6,
+                  index: 7,
                   child: Center(
                     child: Text(
                       '© Smarpar 2025',
