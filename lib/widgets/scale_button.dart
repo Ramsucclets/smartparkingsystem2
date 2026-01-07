@@ -80,14 +80,13 @@ class _ScaleButtonState extends State<ScaleButton>
         child: AnimatedBuilder(
           animation: Listenable.merge([_tapController, _hoverController]),
           builder: (context, child) {
-            // Combine both scale values for single transform
             final combinedScale = _tapAnimation.value * _hoverAnimation.value;
             return Transform.scale(
               scale: combinedScale,
               child: child,
             );
           },
-          child: widget.child, // Child is cached, not rebuilt
+          child: widget.child,
         ),
       ),
     );

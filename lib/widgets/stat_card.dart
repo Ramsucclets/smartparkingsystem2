@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Animated stat card with count-up effect and glow
 class AnimatedStatCard extends StatefulWidget {
   final String title;
   final int value;
@@ -103,7 +102,6 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
                 ),
               ],
             ),
-            // Removed expensive BackdropFilter for performance
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Container(
@@ -118,7 +116,6 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Icon with glow - smaller
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -140,7 +137,6 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // Animated count - with FittedBox to prevent overflow
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
@@ -186,7 +182,6 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
   }
 }
 
-/// Compact stat pill for inline display
 class StatPill extends StatelessWidget {
   final String label;
   final String value;

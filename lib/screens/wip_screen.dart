@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// A reusable "Work in Progress" placeholder screen
 class WorkInProgressScreen extends StatelessWidget {
   final String title;
   final String? description;
@@ -48,7 +47,6 @@ class WorkInProgressScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Animated icon container
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.8, end: 1.0),
                   duration: const Duration(milliseconds: 1500),
@@ -87,8 +85,6 @@ class WorkInProgressScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 40),
-
-                // Title
                 Text(
                   'Coming Soon',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -97,8 +93,6 @@ class WorkInProgressScreen extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 12),
-
-                // Feature name
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: BackdropFilter(
@@ -127,8 +121,6 @@ class WorkInProgressScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Description
                 Text(
                   description ??
                       'This feature is currently under development.\nCheck back soon for updates!',
@@ -140,8 +132,6 @@ class WorkInProgressScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 40),
-
-                // Progress indicator
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: BackdropFilter(

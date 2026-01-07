@@ -29,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchParkingData();
-    // Auto-refresh every 3 minutes
     _refreshTimer = Timer.periodic(const Duration(minutes: 3), (_) {
       _fetchParkingData();
     });
@@ -80,14 +79,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header with logo and greeting
                 FadeSlideTransition(
                   index: 0,
                   child: GlassmorphicCard(
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        // Logo with glow
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -142,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                        // User avatar placeholder
                         Container(
                           width: 40,
                           height: 40,
@@ -163,8 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Quick stats row
                 FadeSlideTransition(
                   index: 1,
                   child: IntrinsicHeight(
@@ -194,8 +188,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Menu section title
                 FadeSlideTransition(
                   index: 2,
                   child: Padding(
@@ -209,8 +201,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
-                // Menu cards
                 FadeSlideTransition(
                   index: 3,
                   child: InteractiveGlassmorphicCard(
@@ -298,10 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
-                // Footer
                 FadeSlideTransition(
                   index: 7,
                   child: Center(

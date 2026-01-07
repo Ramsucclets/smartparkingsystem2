@@ -22,18 +22,14 @@ class _MapScreenState extends State<MapScreen> {
   final TransformationController _transformController =
       TransformationController();
 
-  // DynamoDB service for fetching real-time data
   final DynamoDBService _dynamoDBService = DynamoDBService();
 
-  // Loading state for data fetch
   bool _isLoading = true;
   String? _errorMessage;
 
-  // Timer for periodic refresh
   Timer? _refreshTimer;
   static const Duration _refreshInterval = Duration(seconds: 30);
 
-  // Spot availability status (populated from backend)
   final Map<String, bool> _spotAvailability = {};
 
   String? _selectedSpotId;
@@ -52,7 +48,6 @@ class _MapScreenState extends State<MapScreen> {
     _initializeGrid();
     _fetchParkingData();
     _startAutoRefresh();
-    // Fit to viewport after the first frame when we have layout info
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_viewportSize != null) {
         _fitToViewport(_viewportSize!);
@@ -67,7 +62,6 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  /// Start periodic refresh of parking data
   void _startAutoRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(_refreshInterval, (_) {
@@ -75,7 +69,6 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  /// Fetch parking data from DynamoDB and update availability
   Future<void> _fetchParkingData({bool showLoading = true}) async {
     if (showLoading && mounted) {
       setState(() {
@@ -89,9 +82,7 @@ class _MapScreenState extends State<MapScreen> {
 
       if (mounted) {
         setState(() {
-          // Update availability based on backend data
           for (final spotData in spots) {
-            // Map spotId to availability (available = not occupied)
             _spotAvailability[spotData.spotId] = !spotData.isOccupied;
           }
           _isLoading = false;
@@ -111,7 +102,6 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  /// Fit the grid to the available viewport with padding
   void _fitToViewport(Size viewportSize) {
     if (viewportSize.isEmpty) return;
 
@@ -119,28 +109,23 @@ class _MapScreenState extends State<MapScreen> {
     final availableWidth = viewportSize.width - padding * 2;
     final availableHeight = viewportSize.height - padding * 2;
 
-    // Calculate scale to fit content
     final scaleX = availableWidth / _grid.canvasWidth;
     final scaleY = availableHeight / _grid.canvasHeight;
     final scale = (scaleX < scaleY ? scaleX : scaleY).clamp(0.5, 1.0);
 
-    // Calculate translation to center the content
     final scaledWidth = _grid.canvasWidth * scale;
     final scaledHeight = _grid.canvasHeight * scale;
     final translateX = (viewportSize.width - scaledWidth) / 2;
     final translateY = (viewportSize.height - scaledHeight) / 2;
 
-    // Apply the transform
     _transformController.value = Matrix4.identity()
       ..translateByDouble(translateX, translateY, 0.0, 1.0)
       ..scaleByDouble(scale, scale, 1.0, 1.0);
   }
 
   void _initializeGrid() {
-    // Create a sample grid (in real app, load from JSON/backend)
     _grid = ParkingGrid.empty(name: 'Main Parking Lot');
 
-    // Add sample spots matching DynamoDB spot IDs (A1, A2, A3, etc.)
     final spots = [
       ParkingSpot(id: 'A1', x: 50, y: 50, type: SpotType.regular),
       ParkingSpot(id: 'A2', x: 50, y: 160, type: SpotType.regular),
@@ -154,11 +139,9 @@ class _MapScreenState extends State<MapScreen> {
 
     for (final spot in spots) {
       _grid.addSpot(spot);
-      // Availability will be updated by _fetchParkingData from backend
     }
   }
 
-  /// Upload a parking grid JSON file for testing
   Future<void> _uploadParkingGrid() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -175,9 +158,7 @@ class _MapScreenState extends State<MapScreen> {
 
           setState(() {
             _grid = ParkingGrid.fromJson(jsonData);
-            // Reset availability - will be updated from backend
             _spotAvailability.clear();
-            // Reset navigation state
             _selectedSpotId = null;
             _currentRoute = [];
             _currentStepIndex = 0;
@@ -187,8 +168,6 @@ class _MapScreenState extends State<MapScreen> {
                 "${_grid.name} - ${_grid.spots.length} spots, ${_grid.roads.length} roads";
           });
 
-          // Initialize spots in DynamoDB and get their availability
-          // This creates any missing spots and fetches current status
           final spotIds = _grid.spots.map((s) => s.id).toList();
           final availability = await _dynamoDBService.initializeSpots(spotIds);
 
@@ -249,7 +228,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _startNavigationForSpot(String spotId) {
-    // Generate simple navigation route
     _currentRoute = [
       {
         'icon': Icons.straight,
@@ -293,7 +271,6 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: Text(_grid.name),
         actions: [
-          // Loading indicator
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
@@ -306,7 +283,6 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
-          // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Parking Data',
@@ -328,7 +304,6 @@ class _MapScreenState extends State<MapScreen> {
       ),
       body: Column(
         children: [
-          // Error banner
           if (_errorMessage != null)
             Container(
               width: double.infinity,
@@ -375,7 +350,6 @@ class _MapScreenState extends State<MapScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Capture viewport size and fit on first build
                     final currentSize =
                         Size(constraints.maxWidth, constraints.maxHeight);
                     if (_viewportSize == null &&
@@ -388,7 +362,6 @@ class _MapScreenState extends State<MapScreen> {
                     }
                     return GestureDetector(
                       onTapUp: (details) {
-                        // Convert the tap position from widget-local to scene coordinates
                         final scenePos =
                             _transformController.toScene(details.localPosition);
                         _handleTap(scenePos.dx, scenePos.dy);
@@ -421,7 +394,6 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
-          // Legend
           _buildLegend(),
         ],
       ),
@@ -429,7 +401,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _handleTap(double x, double y) {
-    // Find spot at tap position
     for (final spot in _grid.spots) {
       if (x >= spot.x &&
           x <= spot.x + spot.width &&
@@ -489,7 +460,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-/// Simple painter for user-facing parking grid
 class UserGridPainter extends CustomPainter {
   final ParkingGrid grid;
   final Map<String, bool> spotAvailability;
@@ -505,7 +475,6 @@ class UserGridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw grid lines
     final gridLineColor = isDarkMode
         ? Colors.white.withValues(alpha: 0.1)
         : Colors.black.withValues(alpha: 0.1);
@@ -520,22 +489,18 @@ class UserGridPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(grid.canvasWidth, y), gridPaint);
     }
 
-    // Draw roads (behind spots)
     for (final road in grid.roads) {
       _drawRoad(canvas, road);
     }
 
-    // Draw obstacles (behind spots)
     for (final obstacle in grid.obstacles) {
       _drawObstacle(canvas, obstacle);
     }
 
-    // Draw parking spots
     for (final spot in grid.spots) {
       _drawSpot(canvas, spot);
     }
 
-    // Draw entrance and exit if they exist
     if (grid.entrance != null) {
       _drawEntrance(canvas, grid.entrance!);
     }
@@ -547,7 +512,6 @@ class UserGridPainter extends CustomPainter {
   void _drawRoad(Canvas canvas, Road road) {
     final rect = Rect.fromLTWH(road.x, road.y, road.width, road.height);
 
-    // Road fill - gray/asphalt color
     final fillPaint = Paint()
       ..color = Colors.grey.shade700
       ..style = PaintingStyle.fill;
@@ -556,19 +520,16 @@ class UserGridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Center dashed line
     final centerLinePaint = Paint()
       ..color = Colors.yellow.withValues(alpha: 0.6)
       ..strokeWidth = 2;
     if (road.width > road.height) {
-      // Horizontal road
       canvas.drawLine(
         Offset(road.x + 10, road.y + road.height / 2),
         Offset(road.x + road.width - 10, road.y + road.height / 2),
         centerLinePaint,
       );
     } else {
-      // Vertical road
       canvas.drawLine(
         Offset(road.x + road.width / 2, road.y + 10),
         Offset(road.x + road.width / 2, road.y + road.height - 10),
@@ -576,7 +537,6 @@ class UserGridPainter extends CustomPainter {
       );
     }
 
-    // Border
     final borderPaint = Paint()
       ..color = Colors.grey.shade500
       ..style = PaintingStyle.stroke
@@ -586,7 +546,6 @@ class UserGridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Display label
     final displayText = road.label ?? road.id;
     final textColor = Colors.white;
     final textPainter = TextPainter(
@@ -612,7 +571,6 @@ class UserGridPainter extends CustomPainter {
         Rect.fromLTWH(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     final color = _getObstacleColor(obstacle.type);
 
-    // Fill
     final fillPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
@@ -621,7 +579,6 @@ class UserGridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = color.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
@@ -631,7 +588,6 @@ class UserGridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Display label
     final displayText = obstacle.label ?? obstacle.id;
     final textPainter = TextPainter(
       text: TextSpan(
@@ -669,7 +625,6 @@ class UserGridPainter extends CustomPainter {
     final rect = Rect.fromLTWH(entrance.x as double, entrance.y as double,
         entrance.width as double, entrance.height as double);
 
-    // Green fill
     final fillPaint = Paint()
       ..color = Colors.green.withValues(alpha: 0.4)
       ..style = PaintingStyle.fill;
@@ -678,7 +633,6 @@ class UserGridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = Colors.green
       ..style = PaintingStyle.stroke
@@ -688,7 +642,6 @@ class UserGridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Label
     final textPainter = TextPainter(
       text: const TextSpan(
         text: 'IN',
@@ -716,7 +669,6 @@ class UserGridPainter extends CustomPainter {
     final rect = Rect.fromLTWH(exit.x as double, exit.y as double,
         exit.width as double, exit.height as double);
 
-    // Red fill
     final fillPaint = Paint()
       ..color = Colors.red.withValues(alpha: 0.4)
       ..style = PaintingStyle.fill;
@@ -725,7 +677,6 @@ class UserGridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = Colors.red
       ..style = PaintingStyle.stroke
@@ -735,7 +686,6 @@ class UserGridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Label
     final textPainter = TextPainter(
       text: const TextSpan(
         text: 'OUT',
@@ -761,7 +711,6 @@ class UserGridPainter extends CustomPainter {
     final isAvailable = spotAvailability[spot.id] ?? false;
     final isSelected = spot.id == selectedSpotId;
 
-    // Determine color based on status
     Color color;
     if (isSelected) {
       color = Colors.blue;
@@ -773,7 +722,6 @@ class UserGridPainter extends CustomPainter {
 
     final rect = Rect.fromLTWH(spot.x, spot.y, spot.width, spot.height);
 
-    // Fill
     final fillPaint = Paint()
       ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
@@ -782,7 +730,6 @@ class UserGridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -792,7 +739,6 @@ class UserGridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Spot type icon indicator (small colored dot in corner)
     final typeColor = _getTypeColor(spot.type);
     if (spot.type != SpotType.regular) {
       final iconPaint = Paint()
@@ -805,7 +751,6 @@ class UserGridPainter extends CustomPainter {
       );
     }
 
-    // Display label if set, otherwise show ID
     final displayText = spot.label ?? spot.id;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final textPainter = TextPainter(

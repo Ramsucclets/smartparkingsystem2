@@ -1,11 +1,8 @@
-/// Type of entrance point
 enum EntranceType {
-  entrance, // Entry point for vehicles
-  exit, // Exit point for vehicles
+  entrance,
+  exit,
 }
 
-/// Model representing an entrance or exit point in the parking lot
-/// Entrances must be attached to roads for pathfinding to work
 class Entrance {
   final String id;
   double x;
@@ -13,7 +10,7 @@ class Entrance {
   double width;
   double height;
   EntranceType type;
-  String? attachedRoadId; // ID of the road this entrance is attached to
+  String? attachedRoadId;
 
   Entrance({
     required this.id,
@@ -25,7 +22,6 @@ class Entrance {
     this.attachedRoadId,
   });
 
-  /// Create a copy of this entrance with optional overrides
   Entrance copyWith({
     String? id,
     double? x,
@@ -46,7 +42,6 @@ class Entrance {
     );
   }
 
-  /// Convert entrance to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -59,7 +54,6 @@ class Entrance {
     };
   }
 
-  /// Create entrance from JSON
   factory Entrance.fromJson(Map<String, dynamic> json) {
     return Entrance(
       id: json['id'] as String,
@@ -75,7 +69,6 @@ class Entrance {
     );
   }
 
-  /// Get the center point of this entrance
   ({double x, double y}) get center => (x: x + width / 2, y: y + height / 2);
 
   @override

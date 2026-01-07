@@ -20,19 +20,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   RegistrationType _registrationType = RegistrationType.user;
 
-  // Admin password requirements (strict)
   bool _hasMinLength = false;
   bool _hasUppercase = false;
   bool _hasLowercase = false;
   bool _hasDigits = false;
   bool _hasSpecialCharacters = false;
 
-  // User password requirements (lax)
   bool _hasUserMinLength = false;
 
   void _updatePasswordRequirements(String password) {
     setState(() {
-      // Admin requirements (strict)
       _hasMinLength = password.length >= 8;
       _hasUppercase = password.contains(RegExp(r'[A-Z]'));
       _hasLowercase = password.contains(RegExp(r'[a-z]'));
@@ -205,7 +202,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Registration Type Selector
                 Text(
                   'Account Type',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -239,7 +235,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Form fields with autofill
                 AutofillGroup(
                   child: Column(
                     children: [

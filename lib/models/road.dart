@@ -1,4 +1,3 @@
-/// Model representing a road segment in the parking lot
 class Road {
   final String id;
   double x;
@@ -20,7 +19,6 @@ class Road {
     this.label,
   });
 
-  /// Create a copy of this road with optional overrides
   Road copyWith({
     String? id,
     double? x,
@@ -43,7 +41,6 @@ class Road {
     );
   }
 
-  /// Convert road to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -57,7 +54,6 @@ class Road {
     };
   }
 
-  /// Create road from JSON
   factory Road.fromJson(Map<String, dynamic> json) {
     return Road(
       id: json['id'] as String,

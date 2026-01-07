@@ -134,9 +134,7 @@ class AdminScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => const GridDesignerScreen(),
                   ),
-                ).then((_) {
-                  // The GridDesignerScreen will handle the import
-                });
+                ).then((_) {});
               },
             ),
             const SizedBox(height: 16),

@@ -54,10 +54,8 @@ const amplifyConfigAdmin = ''' {
   }
 }''';
 
-/// Default config (for backward compatibility) - points to user pool
 const amplifyConfig = amplifyConfigUser;
 
-/// Pool type enum for easy switching
 enum CognitoPoolType {
   user,
   admin,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Animated gradient background with optional floating orbs
 class AnimatedGradientBackground extends StatefulWidget {
   final Widget child;
   final List<Color>? colors;
@@ -11,8 +10,8 @@ class AnimatedGradientBackground extends StatefulWidget {
     super.key,
     required this.child,
     this.colors,
-    this.showOrbs = false, // Disabled by default - too distracting
-    this.animate = false, // Static by default for less distraction
+    this.showOrbs = false,
+    this.animate = false,
   });
 
   @override
@@ -29,7 +28,7 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 60), // Very slow for subtlety
+      duration: const Duration(seconds: 60),
     );
     if (widget.animate) {
       _controller.repeat();
@@ -48,17 +47,16 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
 
     final defaultColors = isDark
         ? [
-            const Color(0xFF0D1B2A), // Deep dark blue
-            const Color(0xFF1B3A4B), // Dark teal
-            const Color(0xFF0D2818), // Dark green
+            const Color(0xFF0D1B2A),
+            const Color(0xFF1B3A4B),
+            const Color(0xFF0D2818),
           ]
         : [
-            const Color(0xFFE0F7FA), // Light cyan
-            const Color(0xFFB2DFDB), // Light teal
-            const Color(0xFFE8F5E9), // Light green
+            const Color(0xFFE0F7FA),
+            const Color(0xFFB2DFDB),
+            const Color(0xFFE8F5E9),
           ];
 
-    // Static gradient - no animation for less distraction
     return Stack(
       children: [
         Container(
@@ -70,14 +68,12 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
             ),
           ),
         ),
-        // Content
         widget.child,
       ],
     );
   }
 }
 
-/// Simple gradient background without animation (for performance)
 class GradientBackground extends StatelessWidget {
   final Widget child;
   final List<Color>? colors;

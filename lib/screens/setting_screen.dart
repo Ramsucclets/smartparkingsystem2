@@ -80,14 +80,11 @@ class _SettingScreenState extends State<SettingScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 8),
-
-                // User Role Card
                 _buildGlassCard(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Row(
                       children: [
-                        // Role icon with glow
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -181,8 +178,6 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Theme Toggle Card
                 _buildGlassCard(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -251,8 +246,6 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Admin Panel Button
                 if (_userRole.hasPermission(UserRole.admin))
                   _buildActionButton(
                     label: _userRole == UserRole.superAdmin
@@ -274,8 +267,6 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
                 if (_userRole.hasPermission(UserRole.admin))
                   const SizedBox(height: 16),
-
-                // Logout Button
                 _buildActionButton(
                   label: 'Log Out',
                   icon: Icons.logout_rounded,
@@ -291,10 +282,7 @@ class _SettingScreenState extends State<SettingScreen> {
                     }
                   },
                 ),
-
                 const SizedBox(height: 32),
-
-                // App info
                 Text(
                   'Smarpar v1.0.0',
                   style: TextStyle(
@@ -313,7 +301,6 @@ class _SettingScreenState extends State<SettingScreen> {
   Widget _buildGlassCard({required Widget child}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Removed BackdropFilter for performance
     return Container(
       decoration: BoxDecoration(
         color: isDark

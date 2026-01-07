@@ -282,7 +282,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Card
           _buildGlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -335,8 +334,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
             ),
           ),
           const SizedBox(height: 16),
-
-          // Search and Quick Actions
           _buildGlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -414,8 +411,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
             ),
           ),
           const SizedBox(height: 16),
-
-          // Selection Summary
           if (_selectedSpotIds.isNotEmpty) ...[
             _buildGlassCard(
               child: Padding(
@@ -468,8 +463,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
             ),
             const SizedBox(height: 16),
           ],
-
-          // Spots Grid
           _buildSpotsGrid(isDark),
         ],
       ),
@@ -650,8 +643,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
     );
   }
 
-  // ========== STATS VIEW ==========
-
   Widget _buildStatsView(bool isDark) {
     final spots = _selectedSpots;
 
@@ -666,7 +657,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
       );
     }
 
-    // Calculate aggregate statistics
     final occupiedCount = spots.where((s) => s.isOccupied).length;
     final availableCount = spots.length - occupiedCount;
     final occupancyRate =
@@ -680,7 +670,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             _buildGlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -762,8 +751,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
               ),
             ),
             const SizedBox(height: 16),
-
-            // Summary Stats
             IntrinsicHeight(
               child: Row(
                 children: [
@@ -800,8 +787,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
               ),
             ),
             const SizedBox(height: 16),
-
-            // Occupancy Bar
             _buildGlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -883,8 +868,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
               ),
             ),
             const SizedBox(height: 20),
-
-            // Individual Spot Cards
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
@@ -897,7 +880,6 @@ class _SpotWatchScreenState extends State<SpotWatchScreen>
               ),
             ),
             const SizedBox(height: 12),
-
             ...spots.map((spot) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _buildSpotDetailCard(spot, isDark),

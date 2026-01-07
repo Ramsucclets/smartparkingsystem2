@@ -4,12 +4,10 @@ import '../../models/parking_grid.dart';
 import '../../models/road.dart';
 import '../../models/obstacle.dart';
 
-/// Callback signatures for properties panel actions
 typedef SpotUpdateCallback = void Function(ParkingSpot spot);
 typedef VoidCallback = void Function();
 typedef RotateSpotCallback = void Function(String spotId);
 
-/// Properties panel widget for editing selected parking spots, roads, and obstacles
 class PropertiesPanel extends StatelessWidget {
   final Set<String> selectedSpotIds;
   final Set<String> selectedRoadIds;
@@ -38,14 +36,12 @@ class PropertiesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // If nothing selected, return empty
     if (selectedSpotIds.isEmpty &&
         selectedRoadIds.isEmpty &&
         selectedObstacleIds.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // If only spots selected
     if (selectedSpotIds.isNotEmpty &&
         selectedRoadIds.isEmpty &&
         selectedObstacleIds.isEmpty) {
@@ -57,7 +53,6 @@ class PropertiesPanel extends StatelessWidget {
       return _buildMultiSpotProperties(context);
     }
 
-    // If only roads selected
     if (selectedRoadIds.isNotEmpty &&
         selectedSpotIds.isEmpty &&
         selectedObstacleIds.isEmpty) {
@@ -69,7 +64,6 @@ class PropertiesPanel extends StatelessWidget {
       return _buildMultiRoadProperties(context);
     }
 
-    // If only obstacles selected
     if (selectedObstacleIds.isNotEmpty &&
         selectedSpotIds.isEmpty &&
         selectedRoadIds.isEmpty) {
@@ -81,7 +75,6 @@ class PropertiesPanel extends StatelessWidget {
       return _buildMultiObstacleProperties(context);
     }
 
-    // Mixed selection - show a summary panel
     return _buildMixedSelectionProperties(context);
   }
 
@@ -104,9 +97,8 @@ class PropertiesPanel extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 16),
-            _buildTextField(context, 'ID', spot.id, (val) {
-              // ID editing logic...
-            }, enabled: false, key: ValueKey('id_${spot.id}')),
+            _buildTextField(context, 'ID', spot.id, (val) {},
+                enabled: false, key: ValueKey('id_${spot.id}')),
             const SizedBox(height: 8),
             _buildNumberField(context, 'X', spot.x, (val) {
               spot.x = val;
@@ -616,7 +608,6 @@ class PropertiesPanel extends StatelessWidget {
   }
 }
 
-/// Widget for bulk labeling multiple spots with a prefix + number pattern
 class _LabelPrefixWidget extends StatefulWidget {
   final Set<String> selectedSpotIds;
   final ParkingGrid grid;
@@ -732,7 +723,6 @@ class _LabelPrefixWidgetState extends State<_LabelPrefixWidget> {
   }
 }
 
-/// Widget for bulk labeling multiple roads with a prefix + number pattern
 class _RoadLabelPrefixWidget extends StatefulWidget {
   final Set<String> selectedRoadIds;
   final ParkingGrid grid;
@@ -848,7 +838,6 @@ class _RoadLabelPrefixWidgetState extends State<_RoadLabelPrefixWidget> {
   }
 }
 
-/// Widget for bulk labeling multiple obstacles with a prefix + number pattern
 class _ObstacleLabelPrefixWidget extends StatefulWidget {
   final Set<String> selectedObstacleIds;
   final ParkingGrid grid;
@@ -966,7 +955,6 @@ class _ObstacleLabelPrefixWidgetState
   }
 }
 
-/// Debounced text field that only updates parent on blur
 class _DebouncedTextField extends StatefulWidget {
   final String initialValue;
   final bool enabled;
@@ -1037,7 +1025,6 @@ class _DebouncedTextFieldState extends State<_DebouncedTextField> {
   }
 }
 
-/// Debounced number field that only updates parent on blur
 class _DebouncedNumberField extends StatefulWidget {
   final double initialValue;
   final Function(double) onValueChanged;

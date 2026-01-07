@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Mock user data model for demo purposes
 class MockUser {
   final String id;
   final String name;
@@ -25,7 +24,6 @@ class MockUser {
   });
 }
 
-/// User Management Screen with mock data for demo
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
 
@@ -39,7 +37,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   String _searchQuery = '';
   String _selectedFilter = 'All';
 
-  // Mock user data for demo
   final List<MockUser> _mockUsers = [
     MockUser(
       id: 'USR001',
@@ -211,7 +208,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   Widget _buildUsersTab(BuildContext context, bool isDark) {
     return Column(
       children: [
-        // Search and Filter Bar
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -270,8 +266,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             ],
           ),
         ),
-
-        // User count
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -287,8 +281,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
           ),
         ),
         const SizedBox(height: 8),
-
-        // User List
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -326,7 +318,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Avatar
                 Stack(
                   children: [
                     CircleAvatar(
@@ -361,8 +352,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   ],
                 ),
                 const SizedBox(width: 16),
-
-                // User info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,8 +413,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                     ],
                   ),
                 ),
-
-                // Actions
                 PopupMenuButton<String>(
                   icon: Icon(
                     Icons.more_vert,
@@ -548,7 +535,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Stats Grid
           Text(
             'Overview',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -556,7 +542,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                 ),
           ),
           const SizedBox(height: 16),
-
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -600,8 +585,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             ],
           ),
           const SizedBox(height: 32),
-
-          // Role Distribution
           Text(
             'Role Distribution',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -609,7 +592,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                 ),
           ),
           const SizedBox(height: 16),
-
           _buildRoleDistribution(
             context,
             isDark,
@@ -619,8 +601,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             totalUsers,
           ),
           const SizedBox(height: 32),
-
-          // Recent Activity
           Text(
             'Recent Activity',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -628,7 +608,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                 ),
           ),
           const SizedBox(height: 16),
-
           _buildRecentActivity(context, isDark),
         ],
       ),
@@ -881,7 +860,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Handle bar
                 Center(
                   child: Container(
                     width: 40,
@@ -895,8 +873,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // User header
                 Row(
                   children: [
                     CircleAvatar(
@@ -959,8 +935,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   ],
                 ),
                 const SizedBox(height: 32),
-
-                // User details
                 _buildDetailRow(Icons.badge, 'User ID', user.id, isDark),
                 _buildDetailRow(Icons.email, 'Email', user.email, isDark),
                 _buildDetailRow(
@@ -982,8 +956,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   isDark,
                 ),
                 const SizedBox(height: 24),
-
-                // Actions
                 Row(
                   children: [
                     Expanded(

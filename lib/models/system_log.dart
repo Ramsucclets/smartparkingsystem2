@@ -1,4 +1,3 @@
-/// Log severity levels
 enum LogLevel {
   info,
   warning,
@@ -19,7 +18,6 @@ enum LogLevel {
   }
 }
 
-/// Log categories for organizing system events
 enum LogCategory {
   auth,
   parking,
@@ -43,7 +41,6 @@ enum LogCategory {
   }
 }
 
-/// Model representing a single system log entry
 class SystemLog {
   final String id;
   final DateTime timestamp;
@@ -63,7 +60,6 @@ class SystemLog {
     this.metadata,
   });
 
-  /// Create a log with auto-generated ID and current timestamp
   factory SystemLog.create({
     required LogLevel level,
     required LogCategory category,
@@ -82,7 +78,6 @@ class SystemLog {
     );
   }
 
-  /// Convert log to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -95,7 +90,6 @@ class SystemLog {
     };
   }
 
-  /// Create log from JSON
   factory SystemLog.fromJson(Map<String, dynamic> json) {
     return SystemLog(
       id: json['id'] as String,

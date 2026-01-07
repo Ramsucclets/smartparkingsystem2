@@ -1,11 +1,9 @@
-/// Enum for different obstacle types
 enum ObstacleType {
   pillar,
   wall,
   barrier,
 }
 
-/// Model representing an obstacle/pillar in the parking lot
 class Obstacle {
   final String id;
   double x;
@@ -25,7 +23,6 @@ class Obstacle {
     this.label,
   });
 
-  /// Create a copy of this obstacle with optional overrides
   Obstacle copyWith({
     String? id,
     double? x,
@@ -46,7 +43,6 @@ class Obstacle {
     );
   }
 
-  /// Convert obstacle to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -59,7 +55,6 @@ class Obstacle {
     };
   }
 
-  /// Create obstacle from JSON
   factory Obstacle.fromJson(Map<String, dynamic> json) {
     return Obstacle(
       id: json['id'] as String,

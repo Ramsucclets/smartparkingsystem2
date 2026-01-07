@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// A premium glassmorphic card with blur effect and gradient border
 class GlassmorphicCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -17,7 +16,7 @@ class GlassmorphicCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.borderRadius = 24,
-    this.blur = 0, // Disabled by default for performance - set > 0 to enable
+    this.blur = 0,
     this.borderColor,
     this.borderWidth = 1.5,
     this.gradientColors,
@@ -71,7 +70,6 @@ class GlassmorphicCard extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(borderRadius),
-            // Only apply BackdropFilter if blur > 0 (expensive operation)
             child: blur > 0
                 ? BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
@@ -98,7 +96,6 @@ class GlassmorphicCard extends StatelessWidget {
   }
 }
 
-/// Interactive glassmorphic card with hover and tap animations
 class InteractiveGlassmorphicCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -150,7 +147,6 @@ class _InteractiveGlassmorphicCardState
   }
 
   void _onHover(bool hover) {
-    // Avoid setState when hover state hasn't changed
     if (_isHovered == hover) return;
     _isHovered = hover;
     if (hover) {
@@ -215,7 +211,6 @@ class _InteractiveGlassmorphicCardState
                       ),
                     ],
                   ),
-                  // Removed expensive BackdropFilter - use child parameter for caching
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(widget.borderRadius),
                     child: Container(
@@ -227,13 +222,13 @@ class _InteractiveGlassmorphicCardState
                         borderRadius:
                             BorderRadius.circular(widget.borderRadius),
                       ),
-                      child: child, // Cached child widget
+                      child: child,
                     ),
                   ),
                 ),
               );
             },
-            child: widget.child, // Child is built once and cached
+            child: widget.child,
           ),
         ),
       ),

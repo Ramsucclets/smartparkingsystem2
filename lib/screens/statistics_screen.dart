@@ -23,7 +23,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   SpotFilter _currentFilter = SpotFilter.all;
   final TextEditingController _searchController = TextEditingController();
 
-  // Computed heuristics from parking data
   Map<String, int> get _hourlyOccupancy {
     final Map<String, int> hourlyData = {};
     for (int i = 0; i < 24; i++) {
@@ -102,8 +101,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   double get _turnoverRate {
-    // Estimated turnover: number of status changes per hour
-    // This is a simplified heuristic based on recent updates
     if (_parkingSpots.isEmpty) return 0.0;
 
     final now = DateTime.now().toUtc();
@@ -141,15 +138,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final rating = _efficiencyRating;
     switch (rating) {
       case 'Low Usage':
-        return const Color(0xFF3B82F6); // Blue
+        return const Color(0xFF3B82F6);
       case 'Moderate':
-        return const Color(0xFF10B981); // Green
+        return const Color(0xFF10B981);
       case 'Optimal':
-        return const Color(0xFFF59E0B); // Amber
+        return const Color(0xFFF59E0B);
       case 'High Demand':
-        return const Color(0xFFF43F5E); // Red
+        return const Color(0xFFF43F5E);
       default:
-        return const Color(0xFF6B7280); // Gray
+        return const Color(0xFF6B7280);
     }
   }
 
@@ -206,7 +203,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         spots = _parkingSpots;
     }
 
-    // Apply search filter
     final searchQuery = _searchController.text;
     if (searchQuery.isNotEmpty) {
       spots = spots
@@ -228,7 +224,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         title: const Text("Parking Statistics"),
         backgroundColor: Colors.transparent,
         actions: [
-          // Navigate to Map button
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(8),
@@ -409,7 +404,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       );
     }
 
-    // Calculate statistics
     final occupiedCount = _parkingSpots.where((s) => s.isOccupied).length;
     final availableCount = _parkingSpots.length - occupiedCount;
     final occupancyRate = (_parkingSpots.isNotEmpty)
@@ -425,7 +419,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Summary cards - uniform charcoal background with colored icons/text
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -435,7 +428,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       title: 'Total Spots',
                       value: _parkingSpots.length,
                       icon: Icons.local_parking,
-                      color: const Color(0xFF3B82F6), // Electric blue
+                      color: const Color(0xFF3B82F6),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -444,7 +437,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       title: 'Occupied',
                       value: occupiedCount,
                       icon: Icons.directions_car,
-                      color: const Color(0xFFF43F5E), // Rose red
+                      color: const Color(0xFFF43F5E),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -453,15 +446,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       title: 'Available',
                       value: availableCount,
                       icon: Icons.check_circle,
-                      color: const Color(0xFF10B981), // Emerald green
+                      color: const Color(0xFF10B981),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // Quick Action - Navigate to nearest spot
             if (availableCount > 0)
               _buildGlassCard(
                 child: InkWell(
@@ -540,8 +531,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
               ),
             const SizedBox(height: 16),
-
-            // Occupancy rate bar
             _buildGlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -633,8 +622,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Insights Row - Peak Hours & Efficiency
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -664,8 +651,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Efficiency & Duration Row
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -695,8 +680,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Turnover Rate Card
             _buildGlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -766,8 +749,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Recent Activity Section
             if (_recentActivity.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -794,8 +775,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               _buildRecentActivityTimeline(isDark),
               const SizedBox(height: 16),
             ],
-
-            // Search bar
             _buildGlassCard(
               child: Padding(
                 padding:
@@ -860,8 +839,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Filter chips
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -896,8 +873,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Parking spots list header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
@@ -920,8 +895,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Spot cards
             ...List.generate(_filteredSpots.length, (index) {
               final spot = _filteredSpots[index];
               return Padding(
@@ -1087,7 +1060,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Timeline indicator
                 Column(
                   children: [
                     Container(
@@ -1122,7 +1094,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ],
                 ),
                 const SizedBox(width: 12),
-                // Activity content
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
@@ -1193,7 +1164,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget _buildGlassCard({required Widget child}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Removed BackdropFilter for performance - especially important in lists
     return Container(
       decoration: BoxDecoration(
         color: isDark
@@ -1261,7 +1231,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             color: isDark ? Colors.white : const Color(0xFF0D1B2A),
           ),
         ),
-        // Removed redundant "Status: Available" text - badge on right is sufficient
         subtitle: Text(
           _formatTimestampWithLabel(spot.lastUpdated, spot.isOccupied),
           style: TextStyle(
@@ -1308,7 +1277,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       final timeStr =
           '${utc7Time.hour.toString().padLeft(2, '0')}:${utc7Time.minute.toString().padLeft(2, '0')}';
 
-      // Add meaningful label based on status
       if (isOccupied) {
         return 'Occupied since: $timeStr';
       } else {

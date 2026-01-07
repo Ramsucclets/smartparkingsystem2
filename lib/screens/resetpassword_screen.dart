@@ -107,7 +107,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
-                // Account Type Selector
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(

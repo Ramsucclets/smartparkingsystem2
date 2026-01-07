@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../models/system_log.dart';
 import '../../services/logging_service.dart';
 
-/// Screen displaying system logs with filtering capabilities
 class SystemLogsScreen extends StatefulWidget {
   const SystemLogsScreen({super.key});
 
@@ -165,10 +164,7 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
         ),
         child: Column(
           children: [
-            // Filter Section
             _buildFilterSection(isDark),
-
-            // Log Count
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -198,8 +194,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                 ],
               ),
             ),
-
-            // Logs List
             Expanded(
               child: filteredLogs.isEmpty
                   ? _buildEmptyState(isDark)
@@ -241,7 +235,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Level filters
           Text(
             'Severity',
             style: TextStyle(
@@ -264,8 +257,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Category filters
           Text(
             'Category',
             style: TextStyle(
@@ -386,7 +377,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Level icon
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -400,13 +390,10 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-
-                    // Content
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header row
                           Row(
                             children: [
                               Container(
@@ -452,8 +439,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-
-                          // Message
                           Text(
                             log.message,
                             style: TextStyle(
@@ -461,8 +446,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                               height: 1.3,
                             ),
                           ),
-
-                          // Metadata indicator
                           if (log.metadata != null || log.userId != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -509,8 +492,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                         ],
                       ),
                     ),
-
-                    // Chevron
                     Icon(
                       Icons.chevron_right,
                       color: isDark ? Colors.white24 : Colors.black26,
@@ -574,7 +555,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
   }
 }
 
-/// Bottom sheet showing log details
 class _LogDetailSheet extends StatelessWidget {
   final SystemLog log;
 
@@ -592,7 +572,6 @@ class _LogDetailSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
           Container(
             margin: const EdgeInsets.symmetric(vertical: 12),
             width: 40,
@@ -602,13 +581,11 @@ class _LogDetailSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Text(
                   'Log Details',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -616,8 +593,6 @@ class _LogDetailSheet extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 20),
-
-                // Details
                 _buildDetailRow('ID', log.id, isDark),
                 _buildDetailRow(
                   'Timestamp',

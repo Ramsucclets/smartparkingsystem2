@@ -7,7 +7,6 @@ import '../../models/road.dart';
 import '../../models/obstacle.dart';
 import '../../models/entrance.dart';
 
-/// Cached grid lines image for performance
 ui.Picture? _cachedGridLines;
 double _cachedGridWidth = 0;
 double _cachedGridHeight = 0;
@@ -28,10 +27,9 @@ class GridPainter extends CustomPainter {
   final int spotCount;
   final int roadCount;
   final int obstacleCount;
-  final int repaintToken; // Token to force repaint during drag operations
-  final bool showPaths; // Whether to draw computed paths
+  final int repaintToken;
+  final bool showPaths;
 
-  // Pre-created Paint objects for better performance
   static final Paint _gridPaint = Paint()
     ..color = Colors.white.withValues(alpha: 0.1)
     ..strokeWidth = 1;
@@ -45,7 +43,6 @@ class GridPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
 
-  // Static paints for path visualization
   static final Color _pathFromEntrancePaint =
       Colors.green.withValues(alpha: 0.6);
   static final Color _pathToExitPaint = Colors.red.withValues(alpha: 0.6);
@@ -68,7 +65,6 @@ class GridPainter extends CustomPainter {
         roadCount = grid.roads.length,
         obstacleCount = grid.obstacles.length;
 
-  /// Get or create cached grid lines picture
   ui.Picture _getGridLinesPicture() {
     if (_cachedGridLines != null &&
         _cachedGridWidth == grid.canvasWidth &&
@@ -77,7 +73,6 @@ class GridPainter extends CustomPainter {
       return _cachedGridLines!;
     }
 
-    // Create new cached picture
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
@@ -98,33 +93,27 @@ class GridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw cached grid lines (very fast - just replays recorded commands)
     canvas.drawPicture(_getGridLinesPicture());
 
-    // Draw roads (behind spots)
     for (final road in grid.roads) {
       final isSelected = selectedRoadIds.contains(road.id);
       _drawRoad(canvas, road, isSelected);
     }
 
-    // Draw obstacles (behind spots)
     for (final obstacle in grid.obstacles) {
       final isSelected = selectedObstacleIds.contains(obstacle.id);
       _drawObstacle(canvas, obstacle, isSelected);
     }
 
-    // Draw parking spots (on top)
     for (final spot in grid.spots) {
       final isSelected = selectedSpotIds.contains(spot.id);
       _drawSpot(canvas, spot, isSelected);
     }
 
-    // Draw road preview during drawing
     if (roadDrawStart != null && roadDrawEnd != null) {
       _drawRoadPreview(canvas, roadDrawStart!, roadDrawEnd!);
     }
 
-    // Draw entrance and exit
     if (grid.entrance != null) {
       _drawEntrance(canvas, grid.entrance!);
     }
@@ -132,7 +121,6 @@ class GridPainter extends CustomPainter {
       _drawExit(canvas, grid.exit!);
     }
 
-    // Draw computed paths (optional) - uses static paints for performance
     if (showPaths) {
       for (final spot in grid.spots) {
         if (spot.pathFromEntrance != null) {
@@ -144,14 +132,12 @@ class GridPainter extends CustomPainter {
       }
     }
 
-    // Draw drag selection rectangle (lightweight overlay)
     if (dragStart != null && dragEnd != null) {
       final selectionRect = Rect.fromPoints(dragStart!, dragEnd!);
       canvas.drawRect(selectionRect, _selectionFillPaint);
       canvas.drawRect(selectionRect, _selectionBorderPaint);
     }
 
-    // Draw ruler measurement line
     if (rulerStart != null && rulerEnd != null) {
       _drawRuler(canvas, rulerStart!, rulerEnd!);
     }
@@ -160,7 +146,6 @@ class GridPainter extends CustomPainter {
   void _drawRoad(Canvas canvas, Road road, bool isSelected) {
     final rect = Rect.fromLTWH(road.x, road.y, road.width, road.height);
 
-    // Road fill - gray/asphalt color
     final fillPaint = Paint()
       ..color = Colors.grey.shade700
       ..style = PaintingStyle.fill;
@@ -169,19 +154,16 @@ class GridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Center dashed line (simplified as solid)
     final centerLinePaint = Paint()
       ..color = Colors.yellow.withValues(alpha: 0.6)
       ..strokeWidth = 2;
     if (road.width > road.height) {
-      // Horizontal road
       canvas.drawLine(
         Offset(road.x + 10, road.y + road.height / 2),
         Offset(road.x + road.width - 10, road.y + road.height / 2),
         centerLinePaint,
       );
     } else {
-      // Vertical road
       canvas.drawLine(
         Offset(road.x + road.width / 2, road.y + 10),
         Offset(road.x + road.width / 2, road.y + road.height - 10),
@@ -189,7 +171,6 @@ class GridPainter extends CustomPainter {
       );
     }
 
-    // Border
     final borderPaint = Paint()
       ..color = isSelected ? Colors.white : Colors.grey.shade500
       ..style = PaintingStyle.stroke
@@ -199,7 +180,6 @@ class GridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Display label if set, otherwise show ID
     final displayText = road.label ?? road.id;
     final textPainter = TextPainter(
       text: TextSpan(
@@ -224,7 +204,6 @@ class GridPainter extends CustomPainter {
         Rect.fromLTWH(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     final color = _getObstacleColor(obstacle.type);
 
-    // Fill
     final fillPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
@@ -233,7 +212,6 @@ class GridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = isSelected ? Colors.white : color.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
@@ -243,7 +221,6 @@ class GridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Display label if set, otherwise show ID
     final displayText = obstacle.label ?? obstacle.id;
     final textPainter = TextPainter(
       text: TextSpan(
@@ -267,7 +244,6 @@ class GridPainter extends CustomPainter {
   }
 
   void _drawRoadPreview(Canvas canvas, Offset start, Offset end) {
-    // Calculate preview rectangle
     final dx = (end.dx - start.dx).abs();
     final dy = (end.dy - start.dy).abs();
     double width, height;
@@ -282,7 +258,6 @@ class GridPainter extends CustomPainter {
     final y = start.dy < end.dy ? start.dy : end.dy;
     final rect = Rect.fromLTWH(x, y, width, height);
 
-    // Preview fill
     final fillPaint = Paint()
       ..color = Colors.grey.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
@@ -291,7 +266,6 @@ class GridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Preview border
     final borderPaint = Paint()
       ..color = Colors.grey
       ..style = PaintingStyle.stroke
@@ -316,10 +290,8 @@ class GridPainter extends CustomPainter {
   void _drawRuler(Canvas canvas, Offset start, Offset end) {
     final distance = (end - start).distance;
 
-    // Change color to red when hovering with delete tool
     final rulerColor = isHoveringRuler ? Colors.red : Colors.amber;
 
-    // Main line
     final linePaint = Paint()
       ..color = rulerColor
       ..strokeWidth = isHoveringRuler ? 3 : 2
@@ -327,7 +299,6 @@ class GridPainter extends CustomPainter {
 
     canvas.drawLine(start, end, linePaint);
 
-    // Start point circle
     final pointPaint = Paint()
       ..color = rulerColor
       ..style = PaintingStyle.fill;
@@ -336,7 +307,6 @@ class GridPainter extends CustomPainter {
     canvas.drawCircle(start, pointRadius, pointPaint);
     canvas.drawCircle(end, pointRadius, pointPaint);
 
-    // Inner white circle
     final innerPointPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
@@ -345,7 +315,6 @@ class GridPainter extends CustomPainter {
     canvas.drawCircle(start, innerRadius, innerPointPaint);
     canvas.drawCircle(end, innerRadius, innerPointPaint);
 
-    // Distance label background
     final midPoint = Offset((start.dx + end.dx) / 2, (start.dy + end.dy) / 2);
     final labelText = isHoveringRuler
         ? 'Click to delete'
@@ -364,7 +333,6 @@ class GridPainter extends CustomPainter {
     );
     textPainter.layout();
 
-    // Draw label background
     final labelRect = Rect.fromCenter(
       center: midPoint,
       width: textPainter.width + 12,
@@ -380,7 +348,6 @@ class GridPainter extends CustomPainter {
       labelBgPaint,
     );
 
-    // Draw label text
     textPainter.paint(
       canvas,
       Offset(
@@ -394,7 +361,6 @@ class GridPainter extends CustomPainter {
     final color = _getSpotColor(spot.type);
     final rect = Rect.fromLTWH(spot.x, spot.y, spot.width, spot.height);
 
-    // Fill
     final fillPaint = Paint()
       ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
@@ -403,7 +369,6 @@ class GridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = isSelected ? Colors.white : color
       ..style = PaintingStyle.stroke
@@ -413,7 +378,6 @@ class GridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Display label if set, otherwise show ID
     final displayText = spot.label ?? spot.id;
     final textPainter = TextPainter(
       text: TextSpan(
@@ -447,12 +411,10 @@ class GridPainter extends CustomPainter {
     }
   }
 
-  /// Draw entrance point with green arrow pointing inward
   void _drawEntrance(Canvas canvas, Entrance entrance) {
     final rect =
         Rect.fromLTWH(entrance.x, entrance.y, entrance.width, entrance.height);
 
-    // Green fill
     final fillPaint = Paint()
       ..color = Colors.green.withValues(alpha: 0.4)
       ..style = PaintingStyle.fill;
@@ -461,7 +423,6 @@ class GridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = Colors.green
       ..style = PaintingStyle.stroke
@@ -471,7 +432,6 @@ class GridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Draw arrow icon pointing inward (right arrow)
     final iconPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
@@ -479,7 +439,6 @@ class GridPainter extends CustomPainter {
     final centerY = entrance.y + entrance.height / 2;
     final arrowSize = entrance.width * 0.4;
 
-    // Arrow pointing right (into parking)
     final path = Path()
       ..moveTo(centerX - arrowSize / 2, centerY - arrowSize / 3)
       ..lineTo(centerX + arrowSize / 2, centerY)
@@ -487,7 +446,6 @@ class GridPainter extends CustomPainter {
       ..close();
     canvas.drawPath(path, iconPaint);
 
-    // Label
     final textPainter = TextPainter(
       text: const TextSpan(
         text: 'IN',
@@ -506,11 +464,9 @@ class GridPainter extends CustomPainter {
     );
   }
 
-  /// Draw exit point with red arrow pointing outward
   void _drawExit(Canvas canvas, Entrance exit) {
     final rect = Rect.fromLTWH(exit.x, exit.y, exit.width, exit.height);
 
-    // Red fill
     final fillPaint = Paint()
       ..color = Colors.red.withValues(alpha: 0.4)
       ..style = PaintingStyle.fill;
@@ -519,7 +475,6 @@ class GridPainter extends CustomPainter {
       fillPaint,
     );
 
-    // Border
     final borderPaint = Paint()
       ..color = Colors.red
       ..style = PaintingStyle.stroke
@@ -529,7 +484,6 @@ class GridPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Draw arrow icon pointing outward
     final iconPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
@@ -537,7 +491,6 @@ class GridPainter extends CustomPainter {
     final centerY = exit.y + exit.height / 2;
     final arrowSize = exit.width * 0.4;
 
-    // Arrow pointing left (out of parking)
     final path = Path()
       ..moveTo(centerX + arrowSize / 2, centerY - arrowSize / 3)
       ..lineTo(centerX - arrowSize / 2, centerY)
@@ -564,7 +517,6 @@ class GridPainter extends CustomPainter {
     );
   }
 
-  /// Draw a path as a series of connected lines
   void _drawPath(Canvas canvas, List<Map<String, double>> path, Color color) {
     if (path.length < 2) return;
 
@@ -584,7 +536,6 @@ class GridPainter extends CustomPainter {
 
     canvas.drawPath(pathObj, pathPaint);
 
-    // Draw waypoint dots
     final dotPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;

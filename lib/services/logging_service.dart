@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import '../models/system_log.dart';
 
-/// Singleton service for managing system logs
 class LoggingService {
   static final LoggingService _instance = LoggingService._internal();
   factory LoggingService() => _instance;
@@ -10,23 +9,17 @@ class LoggingService {
     _addDemoLogs();
   }
 
-  /// Maximum number of logs to keep in memory
   static const int maxLogs = 500;
 
-  /// In-memory log storage
   final List<SystemLog> _logs = [];
 
-  /// Stream controller for real-time log updates
   final StreamController<List<SystemLog>> _logStreamController =
       StreamController<List<SystemLog>>.broadcast();
 
-  /// Stream of logs for UI updates
   Stream<List<SystemLog>> get logStream => _logStreamController.stream;
 
-  /// Get all logs (newest first)
   List<SystemLog> get logs => List.unmodifiable(_logs.reversed.toList());
 
-  /// Add demo logs for testing
   void _addDemoLogs() {
     final demoLogs = [
       SystemLog(
@@ -101,7 +94,6 @@ class LoggingService {
     _logs.addAll(demoLogs);
   }
 
-  /// Log a message with specified level and category
   void log({
     required LogLevel level,
     required LogCategory category,
@@ -119,19 +111,15 @@ class LoggingService {
 
     _logs.add(logEntry);
 
-    // Remove oldest logs if exceeding max
     while (_logs.length > maxLogs) {
       _logs.removeAt(0);
     }
 
-    // Notify listeners
     _logStreamController.add(logs);
 
-    // Also print to console for debugging
     developer.log('[${level.displayName}] ${category.displayName}: $message');
   }
 
-  /// Log an info message
   void logInfo(LogCategory category, String message,
       {String? userId, Map<String, dynamic>? metadata}) {
     log(
@@ -142,7 +130,6 @@ class LoggingService {
         metadata: metadata);
   }
 
-  /// Log a warning message
   void logWarning(LogCategory category, String message,
       {String? userId, Map<String, dynamic>? metadata}) {
     log(
@@ -153,7 +140,6 @@ class LoggingService {
         metadata: metadata);
   }
 
-  /// Log an error message
   void logError(LogCategory category, String message,
       {String? userId, Map<String, dynamic>? metadata}) {
     log(
@@ -164,7 +150,6 @@ class LoggingService {
         metadata: metadata);
   }
 
-  /// Log a critical message
   void logCritical(LogCategory category, String message,
       {String? userId, Map<String, dynamic>? metadata}) {
     log(
@@ -175,7 +160,6 @@ class LoggingService {
         metadata: metadata);
   }
 
-  /// Get logs filtered by category and/or level
   List<SystemLog> getLogs({LogCategory? category, LogLevel? level}) {
     var filtered = logs;
 
@@ -190,14 +174,12 @@ class LoggingService {
     return filtered;
   }
 
-  /// Clear all logs
   void clearLogs() {
     _logs.clear();
     _logStreamController.add(logs);
     logInfo(LogCategory.admin, 'System logs cleared');
   }
 
-  /// Dispose the stream controller
   void dispose() {
     _logStreamController.close();
   }

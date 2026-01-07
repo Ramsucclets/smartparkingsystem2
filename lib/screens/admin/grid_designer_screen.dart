@@ -35,13 +35,11 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
   final Set<String> _selectedSpotIds = {};
   final Set<String> _selectedRoadIds = {};
   final Set<String> _selectedObstacleIds = {};
-  bool _showPaths = false; // Toggle for path visualization
+  bool _showPaths = false;
 
-  // Drag selection state
   Offset? _dragStart;
   Offset? _dragEnd;
 
-  // Road drawing state
   Offset? _roadDrawStart;
   Offset? _roadDrawEnd;
 
@@ -64,7 +62,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
 
   final ValueNotifier<int> _dragUpdateNotifier = ValueNotifier<int>(0);
 
-  // Clipboard for copy/paste
   List<ParkingSpot> _clipboardSpots = [];
   List<Road> _clipboardRoads = [];
   List<Obstacle> _clipboardObstacles = [];
@@ -77,7 +74,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     _grid = ParkingGrid.empty(name: 'New Parking Grid');
     _saveState();
 
-    // Center the canvas view after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _centerCanvas();
     });
@@ -90,19 +86,15 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     super.dispose();
   }
 
-  /// Center the grid content in the viewport
   void _centerCanvas() {
     if (_canvasViewportSize == null || _canvasViewportSize!.isEmpty) {
-      // Fallback to identity if we don't have viewport size
       _transformController.value = Matrix4.identity();
       return;
     }
 
-    // Calculate translation to center the canvas
     final viewportWidth = _canvasViewportSize!.width;
     final viewportHeight = _canvasViewportSize!.height;
 
-    // Center the canvas in the viewport
     final translateX = (viewportWidth - _grid.canvasWidth) / 2;
     final translateY = (viewportHeight - _grid.canvasHeight) / 2;
 
@@ -140,7 +132,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
   }
 
   void _addSpotAt(double x, double y) {
-    // Create a temporary spot to get its dimensions
     final tempSpot = ParkingSpot(
       id: '',
       x: 0,
@@ -148,24 +139,20 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       type: _selectedSpotType,
     );
 
-    // Center the spot on the click position by offsetting by half the dimensions
     final centeredX = x - tempSpot.width / 2;
     final centeredY = y - tempSpot.height / 2;
 
-    // Snap the centered position to grid
     var snappedX = _grid.snapToGrid(centeredX);
     var snappedY = _grid.snapToGrid(centeredY);
 
-    // Clamp position to keep spot within canvas bounds
     snappedX = snappedX.clamp(0, _grid.canvasWidth - tempSpot.width);
     snappedY = snappedY.clamp(0, _grid.canvasHeight - tempSpot.height);
 
-    // Check if the spot would be completely outside the canvas
     if (snappedX + tempSpot.width <= 0 ||
         snappedX >= _grid.canvasWidth ||
         snappedY + tempSpot.height <= 0 ||
         snappedY >= _grid.canvasHeight) {
-      return; // Don't place spot outside canvas
+      return;
     }
 
     final spot = ParkingSpot(
@@ -183,9 +170,7 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     _saveState();
   }
 
-  /// Find a spot at the given position
   String? _findSpotAt(double x, double y) {
-    // Search in reverse order to find top-most spot
     for (int i = _grid.spots.length - 1; i >= 0; i--) {
       final spot = _grid.spots[i];
       if (x >= spot.x &&
@@ -225,24 +210,19 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
   }
 
   void _addRoadAt(double x, double y, {double? endX, double? endY}) {
-    // Calculate dimensions if drawing a road segment
     double roadWidth = 80;
     double roadHeight = 200;
 
     if (endX != null && endY != null) {
-      // Road was drawn with drag - calculate dimensions from start/end
       final dx = (endX - x).abs();
       final dy = (endY - y).abs();
       if (dx > dy) {
-        // Horizontal road
         roadWidth = dx.clamp(40, _grid.canvasWidth);
         roadHeight = 60;
       } else {
-        // Vertical road
         roadWidth = 60;
         roadHeight = dy.clamp(40, _grid.canvasHeight);
       }
-      // Adjust position to start from min coordinates
       x = x < endX ? x : endX;
       y = y < endY ? y : endY;
     }
@@ -305,10 +285,7 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     _saveState();
   }
 
-  /// Add an entrance or exit at the given position
-  /// Must be placed on a road
   void _addEntranceAt(double x, double y) {
-    // Check if position is on a road
     final road = _grid.findRoadAtPoint(x, y);
     if (road == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -363,7 +340,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     );
   }
 
-  /// Compute routes from entrance to all parking spots and from spots to exit
   void _computeRoutes() {
     if (_grid.entrance == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -458,9 +434,7 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     }
   }
 
-  /// Select an element (spot, road, or obstacle) at the given position
   void _selectElementAt(double x, double y) {
-    // Check spots first (top layer)
     final spotId = _findSpotAt(x, y);
     if (spotId != null) {
       setState(() {
@@ -470,7 +444,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       return;
     }
 
-    // Check roads
     final roadId = _findRoadAt(x, y);
     if (roadId != null) {
       setState(() {
@@ -480,7 +453,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       return;
     }
 
-    // Check obstacles
     final obstacleId = _findObstacleAt(x, y);
     if (obstacleId != null) {
       setState(() {
@@ -490,17 +462,14 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       return;
     }
 
-    // Clicked on empty area - clear selection
     setState(() {
       _clearAllSelections();
     });
   }
 
-  /// Delete a spot immediately at the clicked position
   void _deleteSpotAt(double x, double y) {
     final foundId = _findSpotAt(x, y);
     if (foundId != null) {
-      // Find the index for direct removal (faster than removeWhere)
       final index = _grid.spots.indexWhere((s) => s.id == foundId);
       if (index != -1) {
         setState(() {
@@ -511,13 +480,12 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
         return;
       }
     }
-    // Try deleting a road
     final roadId = _findRoadAt(x, y);
     if (roadId != null) {
       _deleteRoadAt(roadId);
       return;
     }
-    // Try deleting an obstacle
+
     final obstacleId = _findObstacleAt(x, y);
     if (obstacleId != null) {
       _deleteObstacleAt(obstacleId);
@@ -592,7 +560,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     _selectedObstacleIds.clear();
   }
 
-  /// Copy selected elements to clipboard
   void _copySelected() {
     _clipboardSpots = _grid.spots
         .where((s) => _selectedSpotIds.contains(s.id))
@@ -644,7 +611,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     }
   }
 
-  /// Paste elements from clipboard with offset
   void _pasteFromClipboard() {
     if (_clipboardSpots.isEmpty &&
         _clipboardRoads.isEmpty &&
@@ -657,7 +623,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     setState(() {
       _clearAllSelections();
 
-      // Paste spots
       for (final spot in _clipboardSpots) {
         final newSpot = ParkingSpot(
           id: _grid.generateSpotId(),
@@ -673,7 +638,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
         _selectedSpotIds.add(newSpot.id);
       }
 
-      // Paste roads
       for (final road in _clipboardRoads) {
         final newRoad = Road(
           id: _grid.generateRoadId(),
@@ -686,7 +650,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
         _selectedRoadIds.add(newRoad.id);
       }
 
-      // Paste obstacles
       for (final obstacle in _clipboardObstacles) {
         final newObstacle = Obstacle(
           id: _grid.generateObstacleId(),
@@ -706,7 +669,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     _saveState();
   }
 
-  /// Select all elements on canvas
   void _selectAll() {
     setState(() {
       _selectedSpotIds.clear();
@@ -764,7 +726,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     if (kIsWeb) {
       file_ops.downloadFileWeb(jsonString, fileName);
     } else {
-      // For non-web platforms, use file_picker to save
       final result = await FilePicker.platform.saveFile(
         dialogTitle: 'Save Parking Grid',
         fileName: fileName,
@@ -866,47 +827,34 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
         if (event is KeyDownEvent) {
           final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
 
-          // Ctrl+Z for undo
           if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyZ) {
             if (_undoStack.length > 1) {
               _undo();
               return KeyEventResult.handled;
             }
-          }
-          // Ctrl+Y for redo (industry standard)
-          else if (isCtrlPressed &&
+          } else if (isCtrlPressed &&
               event.logicalKey == LogicalKeyboardKey.keyY) {
             if (_redoStack.isNotEmpty) {
               _redo();
               return KeyEventResult.handled;
             }
-          }
-          // Ctrl+C for copy
-          else if (isCtrlPressed &&
+          } else if (isCtrlPressed &&
               event.logicalKey == LogicalKeyboardKey.keyC) {
             _copySelected();
             return KeyEventResult.handled;
-          }
-          // Ctrl+V for paste
-          else if (isCtrlPressed &&
+          } else if (isCtrlPressed &&
               event.logicalKey == LogicalKeyboardKey.keyV) {
             _pasteFromClipboard();
             return KeyEventResult.handled;
-          }
-          // Ctrl+S for save/export
-          else if (isCtrlPressed &&
+          } else if (isCtrlPressed &&
               event.logicalKey == LogicalKeyboardKey.keyS) {
             _exportToJson();
             return KeyEventResult.handled;
-          }
-          // Ctrl+A for select all
-          else if (isCtrlPressed &&
+          } else if (isCtrlPressed &&
               event.logicalKey == LogicalKeyboardKey.keyA) {
             _selectAll();
             return KeyEventResult.handled;
-          }
-          // Escape key to clear ruler or deselect
-          else if (event.logicalKey == LogicalKeyboardKey.escape) {
+          } else if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (_rulerStart != null || _rulerEnd != null) {
               _clearRuler();
               return KeyEventResult.handled;
@@ -916,16 +864,12 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
               setState(() => _clearAllSelections());
               return KeyEventResult.handled;
             }
-          }
-          // Delete key to delete selected spots
-          else if (event.logicalKey == LogicalKeyboardKey.delete) {
+          } else if (event.logicalKey == LogicalKeyboardKey.delete) {
             if (_selectedSpotIds.isNotEmpty) {
               _deleteSelectedSpot();
               return KeyEventResult.handled;
             }
-          }
-          // R key to rotate selected spots by 90 degrees
-          else if (event.logicalKey == LogicalKeyboardKey.keyR) {
+          } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
             if (_selectedSpotIds.isNotEmpty) {
               _rotateSelectedSpots();
               return KeyEventResult.handled;
@@ -965,13 +909,11 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
               tooltip: 'Redo (Ctrl+Y)',
             ),
             const SizedBox(width: 8),
-            // Compute Routes button
             IconButton(
               icon: const Icon(Icons.route),
               onPressed: _computeRoutes,
               tooltip: 'Compute Routes',
             ),
-            // Toggle path visibility
             IconButton(
               icon: Icon(_showPaths ? Icons.visibility : Icons.visibility_off),
               onPressed: () => setState(() => _showPaths = !_showPaths),
@@ -1058,14 +1000,12 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       ),
       child: Column(
         children: [
-          // Canvas area
           Expanded(
             child: ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Capture viewport size and center on first build
                   final currentSize =
                       Size(constraints.maxWidth, constraints.maxHeight);
                   if (_canvasViewportSize == null &&
@@ -1102,11 +1042,9 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                         final localPosition =
                             _transformController.toScene(event.localPosition);
                         if (_currentTool == DesignerTool.select) {
-                          // Check if clicking on an existing spot to drag it
                           final spotId =
                               _findSpotAt(localPosition.dx, localPosition.dy);
                           if (spotId != null) {
-                            // Start dragging this spot
                             final spot = _grid.findSpot(spotId);
                             if (spot != null) {
                               setState(() {
@@ -1124,7 +1062,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                               });
                             }
                           } else {
-                            // Check if clicking on a road
                             final roadId =
                                 _findRoadAt(localPosition.dx, localPosition.dy);
                             if (roadId != null) {
@@ -1143,7 +1080,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                                 });
                               }
                             } else {
-                              // Check if clicking on an obstacle
                               final obstacleId = _findObstacleAt(
                                   localPosition.dx, localPosition.dy);
                               if (obstacleId != null) {
@@ -1174,7 +1110,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                         } else if (_currentTool == DesignerTool.addSpot) {
                           _addSpotAt(localPosition.dx, localPosition.dy);
                         } else if (_currentTool == DesignerTool.delete) {
-                          // Check if clicking near the ruler first
                           if (_isNearRuler(
                               localPosition.dx, localPosition.dy)) {
                             _clearRuler();
@@ -1187,23 +1122,19 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                             _rulerEnd = localPosition;
                           });
                         } else if (_currentTool == DesignerTool.rotate) {
-                          // Rotate the clicked spot by 90 degrees
                           final spotId =
                               _findSpotAt(localPosition.dx, localPosition.dy);
                           if (spotId != null) {
                             _rotateSpot(spotId);
                           }
                         } else if (_currentTool == DesignerTool.addRoad) {
-                          // Start drawing a road
                           setState(() {
                             _roadDrawStart = localPosition;
                             _roadDrawEnd = localPosition;
                           });
                         } else if (_currentTool == DesignerTool.addObstacle) {
-                          // Place an obstacle at click position
                           _addObstacleAt(localPosition.dx, localPosition.dy);
                         } else if (_currentTool == DesignerTool.addEntrance) {
-                          // Place an entrance/exit at click position
                           _addEntranceAt(localPosition.dx, localPosition.dy);
                         }
                       },
@@ -1213,7 +1144,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                         if (_currentTool == DesignerTool.select) {
                           if (_draggingSpotId != null &&
                               _spotDragOffset != null) {
-                            // Dragging a spot - move it (no setState, use notifier)
                             final spot = _grid.findSpot(_draggingSpotId!);
                             if (spot != null) {
                               final newX =
@@ -1230,7 +1160,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                             }
                           } else if (_draggingRoadId != null &&
                               _roadDragOffset != null) {
-                            // Dragging a road - move it (no setState, use notifier)
                             final road = _grid.findRoad(_draggingRoadId!);
                             if (road != null) {
                               final newX =
@@ -1247,7 +1176,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                             }
                           } else if (_draggingObstacleId != null &&
                               _obstacleDragOffset != null) {
-                            // Dragging an obstacle - move it (no setState, use notifier)
                             final obstacle =
                                 _grid.findObstacle(_draggingObstacleId!);
                             if (obstacle != null) {
@@ -1263,7 +1191,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                               _dragUpdateNotifier.value++;
                             }
                           } else if (_dragStart != null) {
-                            // Box selection
                             _dragEnd = localPosition;
                             _dragUpdateNotifier.value++;
                           }
@@ -1273,7 +1200,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                           _dragUpdateNotifier.value++;
                         } else if (_currentTool == DesignerTool.addRoad &&
                             _roadDrawStart != null) {
-                          // Update road preview
                           _roadDrawEnd = localPosition;
                           _dragUpdateNotifier.value++;
                         }
@@ -1281,28 +1207,24 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                       onPointerUp: (event) {
                         if (_currentTool == DesignerTool.select) {
                           if (_draggingSpotId != null) {
-                            // Finished dragging a spot
                             setState(() {
                               _draggingSpotId = null;
                               _spotDragOffset = null;
                             });
                             _saveState();
                           } else if (_draggingRoadId != null) {
-                            // Finished dragging a road
                             setState(() {
                               _draggingRoadId = null;
                               _roadDragOffset = null;
                             });
                             _saveState();
                           } else if (_draggingObstacleId != null) {
-                            // Finished dragging an obstacle
                             setState(() {
                               _draggingObstacleId = null;
                               _obstacleDragOffset = null;
                             });
                             _saveState();
                           } else if (_dragStart != null) {
-                            // Box selection
                             final localPosition = _transformController
                                 .toScene(event.localPosition);
                             final dragDistance =
@@ -1320,13 +1242,11 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                           }
                         } else if (_currentTool == DesignerTool.addRoad &&
                             _roadDrawStart != null) {
-                          // Complete road creation
                           final localPosition =
                               _transformController.toScene(event.localPosition);
                           final dragDistance =
                               (_roadDrawStart! - localPosition).distance;
                           if (dragDistance > 20) {
-                            // Minimum drag distance for road
                             _addRoadAt(
                               _roadDrawStart!.dx,
                               _roadDrawStart!.dy,
@@ -1334,7 +1254,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                               endY: localPosition.dy,
                             );
                           } else {
-                            // Click without drag - place default road
                             _addRoadAt(localPosition.dx, localPosition.dy);
                           }
                           setState(() {
@@ -1342,7 +1261,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
                             _roadDrawEnd = null;
                           });
                         }
-                        // Ruler keeps its position after pointer up (doesn't reset)
                       },
                       child: InteractiveViewer(
                         transformationController: _transformController,
@@ -1405,52 +1323,40 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
               ),
             ),
           ),
-          // Info bar
           _buildInfoBar(),
         ],
       ),
     );
   }
 
-  /// Check if a point is near the ruler (for deletion)
   bool _isNearRuler(double x, double y) {
     if (_rulerStart == null || _rulerEnd == null) return false;
 
     final clickPoint = Offset(x, y);
-    const hitRadius = 15.0; // Pixels threshold for hit detection
+    const hitRadius = 15.0;
 
-    // Check if near start point
     if ((clickPoint - _rulerStart!).distance <= hitRadius) {
       return true;
     }
-
-    // Check if near end point
     if ((clickPoint - _rulerEnd!).distance <= hitRadius) {
       return true;
     }
 
-    // Check if near the line itself
-    // Calculate distance from point to line segment
     final lineLength = (_rulerEnd! - _rulerStart!).distance;
-    if (lineLength < 0.001) return false; // Avoid division by zero
+    if (lineLength < 0.001) return false;
 
-    // Vector from start to end
     final dx = _rulerEnd!.dx - _rulerStart!.dx;
     final dy = _rulerEnd!.dy - _rulerStart!.dy;
 
-    // Normalized parameter along the line (0 = start, 1 = end)
     final t = ((x - _rulerStart!.dx) * dx + (y - _rulerStart!.dy) * dy) /
         (lineLength * lineLength);
 
-    // Clamp t to [0, 1] to stay within the line segment
     final tClamped = t.clamp(0.0, 1.0);
 
-    // Find the closest point on the line
     final closestX = _rulerStart!.dx + tClamped * dx;
     final closestY = _rulerStart!.dy + tClamped * dy;
     final closestPoint = Offset(closestX, closestY);
 
-    // Check if the click is close to this point
     return (clickPoint - closestPoint).distance <= hitRadius;
   }
 
@@ -1461,18 +1367,14 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     });
   }
 
-  /// Rotate a single spot by 90 degrees
   void _rotateSpot(String spotId) {
     final spot = _grid.findSpot(spotId);
     if (spot != null) {
       setState(() {
-        // Rotate by 90 degrees (add 90, wrap at 360)
         spot.rotation = (spot.rotation + 90) % 360;
-        // Swap width and height for 90/270 degree rotations
         final oldWidth = spot.width;
         spot.width = spot.height;
         spot.height = oldWidth;
-        // Auto-select the rotated spot
         _selectedSpotIds.clear();
         _selectedSpotIds.add(spotId);
       });
@@ -1480,16 +1382,13 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     }
   }
 
-  /// Rotate all selected spots by 90 degrees
   void _rotateSelectedSpots() {
     if (_selectedSpotIds.isEmpty) return;
     setState(() {
       for (final spotId in _selectedSpotIds) {
         final spot = _grid.findSpot(spotId);
         if (spot != null) {
-          // Rotate by 90 degrees (add 90, wrap at 360)
           spot.rotation = (spot.rotation + 90) % 360;
-          // Swap width and height for 90/270 degree rotations
           final oldWidth = spot.width;
           spot.width = spot.height;
           spot.height = oldWidth;
@@ -1579,7 +1478,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
     final newRoadSelection = <String>{};
     final newObstacleSelection = <String>{};
 
-    // Select spots that overlap with the drag rectangle
     for (final spot in _grid.spots) {
       final spotRect = Rect.fromLTWH(spot.x, spot.y, spot.width, spot.height);
       if (rect.overlaps(spotRect)) {
@@ -1587,7 +1485,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       }
     }
 
-    // Select roads that overlap with the drag rectangle
     for (final road in _grid.roads) {
       final roadRect = Rect.fromLTWH(road.x, road.y, road.width, road.height);
       if (rect.overlaps(roadRect)) {
@@ -1595,7 +1492,6 @@ class _GridDesignerScreenState extends State<GridDesignerScreen> {
       }
     }
 
-    // Select obstacles that overlap with the drag rectangle
     for (final obstacle in _grid.obstacles) {
       final obstacleRect = Rect.fromLTWH(
           obstacle.x, obstacle.y, obstacle.width, obstacle.height);

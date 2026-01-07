@@ -24,19 +24,16 @@ class _ConfirmResetPasswordScreenState
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
-  // Admin password requirements (strict)
   bool _hasMinLength = false;
   bool _hasUppercase = false;
   bool _hasLowercase = false;
   bool _hasDigits = false;
   bool _hasSpecialCharacters = false;
 
-  // User password requirements (lax)
   bool _hasUserMinLength = false;
 
   void _updatePasswordRequirements(String password) {
     setState(() {
-      // Admin requirements (strict)
       _hasMinLength = password.length >= 8;
       _hasUppercase = password.contains(RegExp(r'[A-Z]'));
       _hasLowercase = password.contains(RegExp(r'[a-z]'));
@@ -44,7 +41,6 @@ class _ConfirmResetPasswordScreenState
       _hasSpecialCharacters =
           password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
 
-      // User requirements (lax)
       _hasUserMinLength = password.length >= 8;
     });
   }
@@ -195,7 +191,6 @@ class _ConfirmResetPasswordScreenState
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
-                      // Account type indicator
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,

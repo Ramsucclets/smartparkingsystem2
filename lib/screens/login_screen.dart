@@ -122,7 +122,6 @@ class _LoginScreenState extends State<LoginScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Floating Logo with glow
                     AnimatedBuilder(
                       animation: _floatAnimation,
                       builder: (context, child) {
@@ -149,8 +148,6 @@ class _LoginScreenState extends State<LoginScreen>
                       },
                     ),
                     const SizedBox(height: 32),
-
-                    // Title
                     Text(
                       'Welcome Back!',
                       style: TextStyle(
@@ -168,8 +165,6 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     const SizedBox(height: 40),
-
-                    // Glassmorphic form container - removed BackdropFilter for performance
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -194,7 +189,6 @@ class _LoginScreenState extends State<LoginScreen>
                       child: AutofillGroup(
                         child: Column(
                           children: [
-                            // Username field
                             _buildTextField(
                               controller: _usernameController,
                               label: 'Username or Email',
@@ -206,8 +200,6 @@ class _LoginScreenState extends State<LoginScreen>
                               ],
                             ),
                             const SizedBox(height: 16),
-
-                            // Password field
                             _buildTextField(
                               controller: _passwordController,
                               label: 'Password',
@@ -230,8 +222,6 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             const SizedBox(height: 8),
-
-                            // Forgot password
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
@@ -253,8 +243,6 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             const SizedBox(height: 16),
-
-                            // Login button
                             _buildPrimaryButton(
                               onPressed: _isLoading ? null : _login,
                               isLoading: _isLoading,
@@ -262,8 +250,6 @@ class _LoginScreenState extends State<LoginScreen>
                               color: primaryColor,
                             ),
                             const SizedBox(height: 12),
-
-                            // Guest login
                             _buildSecondaryButton(
                               onPressed: () {
                                 Navigator.pushReplacement(
@@ -284,8 +270,6 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     const SizedBox(height: 32),
-
-                    // Debug Super Admin Toggle
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -351,7 +335,6 @@ class _LoginScreenState extends State<LoginScreen>
                                 AuthService.debugSuperAdminMode = value;
                               });
                               if (value) {
-                                // Directly navigate to home as superAdmin
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
@@ -368,8 +351,6 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Divider
                     Row(
                       children: [
                         Expanded(
@@ -393,8 +374,6 @@ class _LoginScreenState extends State<LoginScreen>
                       ],
                     ),
                     const SizedBox(height: 24),
-
-                    // Register button
                     _buildPrimaryButton(
                       onPressed: () {
                         Navigator.push(

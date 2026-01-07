@@ -1,11 +1,9 @@
-/// Enum for different parking spot types
 enum SpotType {
   regular,
   handicapped,
   evCharging,
 }
 
-/// Model representing a single parking spot
 class ParkingSpot {
   final String id;
   double x;
@@ -16,10 +14,8 @@ class ParkingSpot {
   SpotType type;
   String? label;
 
-  /// Pre-computed path from entrance to this spot (list of x,y coordinates)
   List<Map<String, double>>? pathFromEntrance;
 
-  /// Pre-computed path from this spot to exit (list of x,y coordinates)
   List<Map<String, double>>? pathToExit;
 
   ParkingSpot({
@@ -35,7 +31,6 @@ class ParkingSpot {
     this.pathToExit,
   });
 
-  /// Create a copy of this spot with optional overrides
   ParkingSpot copyWith({
     String? id,
     double? x,
@@ -62,7 +57,6 @@ class ParkingSpot {
     );
   }
 
-  /// Convert spot to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -78,7 +72,6 @@ class ParkingSpot {
     };
   }
 
-  /// Create spot from JSON
   factory ParkingSpot.fromJson(Map<String, dynamic> json) {
     return ParkingSpot(
       id: json['id'] as String,

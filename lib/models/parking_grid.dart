@@ -4,7 +4,6 @@ import 'road.dart';
 import 'obstacle.dart';
 import 'entrance.dart';
 
-/// Model representing an entire parking grid layout
 class ParkingGrid {
   String name;
   double canvasWidth;
@@ -13,8 +12,8 @@ class ParkingGrid {
   List<ParkingSpot> spots;
   List<Road> roads;
   List<Obstacle> obstacles;
-  Entrance? entrance; // Single entrance point
-  Entrance? exit; // Single exit point
+  Entrance? entrance;
+  Entrance? exit;
   DateTime createdAt;
   DateTime? updatedAt;
 
@@ -35,13 +34,11 @@ class ParkingGrid {
         obstacles = obstacles ?? [],
         createdAt = createdAt ?? DateTime.now();
 
-  /// Add a new spot to the grid
   void addSpot(ParkingSpot spot) {
     spots.add(spot);
     updatedAt = DateTime.now();
   }
 
-  /// Remove a spot from the grid
   bool removeSpot(String spotId) {
     final lengthBefore = spots.length;
     spots.removeWhere((s) => s.id == spotId);
@@ -52,7 +49,6 @@ class ParkingGrid {
     return false;
   }
 
-  /// Find a spot by ID
   ParkingSpot? findSpot(String spotId) {
     try {
       return spots.firstWhere((s) => s.id == spotId);
@@ -61,13 +57,11 @@ class ParkingGrid {
     }
   }
 
-  /// Add a new road to the grid
   void addRoad(Road road) {
     roads.add(road);
     updatedAt = DateTime.now();
   }
 
-  /// Remove a road from the grid
   bool removeRoad(String roadId) {
     final lengthBefore = roads.length;
     roads.removeWhere((r) => r.id == roadId);
@@ -78,7 +72,6 @@ class ParkingGrid {
     return false;
   }
 
-  /// Find a road by ID
   Road? findRoad(String roadId) {
     try {
       return roads.firstWhere((r) => r.id == roadId);
@@ -87,13 +80,11 @@ class ParkingGrid {
     }
   }
 
-  /// Add a new obstacle to the grid
   void addObstacle(Obstacle obstacle) {
     obstacles.add(obstacle);
     updatedAt = DateTime.now();
   }
 
-  /// Remove an obstacle from the grid
   bool removeObstacle(String obstacleId) {
     final lengthBefore = obstacles.length;
     obstacles.removeWhere((o) => o.id == obstacleId);
@@ -104,7 +95,6 @@ class ParkingGrid {
     return false;
   }
 
-  /// Find an obstacle by ID
   Obstacle? findObstacle(String obstacleId) {
     try {
       return obstacles.firstWhere((o) => o.id == obstacleId);
@@ -113,7 +103,6 @@ class ParkingGrid {
     }
   }
 
-  /// Generate a unique spot ID
   String generateSpotId() {
     int maxNum = 0;
     for (final spot in spots) {
@@ -126,7 +115,6 @@ class ParkingGrid {
     return 'S${maxNum + 1}';
   }
 
-  /// Generate a unique road ID
   String generateRoadId() {
     int maxNum = 0;
     for (final road in roads) {
@@ -139,7 +127,6 @@ class ParkingGrid {
     return 'R${maxNum + 1}';
   }
 
-  /// Generate a unique obstacle ID
   String generateObstacleId() {
     int maxNum = 0;
     for (final obstacle in obstacles) {
@@ -152,36 +139,30 @@ class ParkingGrid {
     return 'O${maxNum + 1}';
   }
 
-  /// Snap a position to the grid
   double snapToGrid(double value) {
     return (value / gridSize).round() * gridSize;
   }
 
-  /// Set entrance (replaces any existing)
   void setEntrance(Entrance newEntrance) {
     entrance = newEntrance;
     updatedAt = DateTime.now();
   }
 
-  /// Set exit (replaces any existing)
   void setExit(Entrance newExit) {
     exit = newExit;
     updatedAt = DateTime.now();
   }
 
-  /// Remove entrance
   void removeEntrance() {
     entrance = null;
     updatedAt = DateTime.now();
   }
 
-  /// Remove exit
   void removeExit() {
     exit = null;
     updatedAt = DateTime.now();
   }
 
-  /// Check if a point is on any road
   bool isPointOnRoad(double x, double y) {
     for (final road in roads) {
       if (x >= road.x &&
@@ -194,7 +175,6 @@ class ParkingGrid {
     return false;
   }
 
-  /// Find the road at a given point (returns null if not on a road)
   Road? findRoadAtPoint(double x, double y) {
     for (final road in roads) {
       if (x >= road.x &&
@@ -207,7 +187,6 @@ class ParkingGrid {
     return null;
   }
 
-  /// Convert grid to JSON
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -224,12 +203,10 @@ class ParkingGrid {
     };
   }
 
-  /// Convert to JSON string (for export)
   String toJsonString() {
     return const JsonEncoder.withIndent('  ').convert(toJson());
   }
 
-  /// Create grid from JSON
   factory ParkingGrid.fromJson(Map<String, dynamic> json) {
     return ParkingGrid(
       name: json['name'] as String? ?? 'Untitled',
@@ -263,12 +240,10 @@ class ParkingGrid {
     );
   }
 
-  /// Create grid from JSON string
   factory ParkingGrid.fromJsonString(String jsonString) {
     return ParkingGrid.fromJson(jsonDecode(jsonString) as Map<String, dynamic>);
   }
 
-  /// Create an empty grid with default settings
   factory ParkingGrid.empty({String name = 'New Parking Grid'}) {
     return ParkingGrid(name: name);
   }
