@@ -1,83 +1,126 @@
-# Smart Parking System App
+# Smart Parking System
 
-A modern Flutter application designed to help users find and navigate to available parking spots in real-time. This application serves as the frontend interface for a larger Smart Parking System ecosystem.
+Flutter-based frontend application for a real-time parking management system. Provides parking spot visualization, pathfinding navigation, and admin tools for grid configuration.
 
-## 📱 Features
+## Features
 
-*   **User Authentication**: Secure login, registration, and password recovery powered by **AWS Amplify Cognito**.
-*   **Real-time Parking Map**: Visual representation of parking spots (Available/Occupied) overlaid on a parking lot map.
-*   **Navigation Assistance**: Turn-by-turn instructions to guide the user to their selected parking spot.
-*   **Statistics Dashboard**: View parking usage statistics (UI implementation).
-*   **Settings**: User preferences and account management.
+### User Features
 
-## 🛠 Tech Stack
+- **Authentication** - Login, registration, password reset via AWS Amplify Cognito
+- **Parking Map** - Interactive grid-based map with zoom/pan, real-time spot status visualization
+- **Pathfinding Navigation** - A\* algorithm-based turn-by-turn navigation to selected spots (WIP)
+- **Spot Watch** - Multi-spot monitoring with historical usage statistics
+- **Statistics Dashboard** - Parking usage analytics with filtering and sorting
 
-*   **Frontend Framework**: [Flutter](https://flutter.dev/) (Dart)
-*   **Authentication**: [AWS Amplify](https://docs.amplify.aws/) (Cognito)
-*   **State Management**: `setState` (currently), transitioning to Riverpod/Provider as needed.
-*   **Platforms**: Android, iOS, Windows, Web.
+### Admin Features
 
-## 🚀 Getting Started
+- **Grid Designer** - Visual editor for parking lot layout (spots, roads, entrances, obstacles)
+- **User Management** - View and manage registered users
+- **System Logs** - Filterable activity and error logging
 
-### Prerequisites
+## Tech Stack
 
-*   [Flutter SDK](https://docs.flutter.dev/get-started/install) (Version 3.6.1 or later)
-*   [Dart SDK](https://dart.dev/get-dart)
-*   An AWS Account (for Amplify configuration)
+| Component        | Technology                         |
+| ---------------- | ---------------------------------- |
+| Framework        | Flutter (Dart)                     |
+| Auth             | AWS Amplify Cognito                |
+| Database         | AWS DynamoDB                       |
+| State Management | setState, Provider (ThemeProvider) |
+| Platforms        | Android, iOS, Windows, Web         |
 
-### Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/yourusername/smartparkingsystem.git
-    cd smartparkingsystem
-    ```
-
-2.  **Install dependencies:**
-    ```bash
-    flutter pub get
-    ```
-
-3.  **Configure AWS Amplify:**
-    *   The project currently uses a hardcoded Amplify configuration in `lib/main.dart`.
-    *   For your own setup, run `amplify init` and `amplify add auth` using the Amplify CLI, or update the configuration string in `_configureAmplify()` with your own Cognito User Pool details.
-
-4.  **Run the app:**
-    ```bash
-    flutter run
-    ```
-
-## 📂 Project Structure
+## Project Structure
 
 ```
 lib/
-├── main.dart           # Entry point & Amplify Configuration
-├── screens/            # UI Screens
-│   ├── login_screen.dart
-│   ├── register_screen.dart
-│   ├── home_screen.dart
-│   ├── map.dart        # Parking Map & Navigation Logic
-│   └── ...
-├── widgets/            # Reusable UI Components
-├── services/           # Authentication & Data Services
-└── ...
+├── main.dart                          # App entry point, Amplify configuration
+├── models/
+│   ├── parking_spot.dart              # Parking spot data model
+│   ├── parking_grid.dart              # Grid serialization/deserialization
+│   ├── entrance.dart                  # Entrance element model
+│   ├── obstacle.dart                  # Obstacle element model
+│   ├── road.dart                      # Road element model
+│   └── system_log.dart                # System log entry model
+├── screens/
+│   ├── login_screen.dart              # User authentication
+│   ├── register_screen.dart           # New user registration
+│   ├── confirm_signup_screen.dart     # Email verification
+│   ├── resetpassword_screen.dart      # Password reset request
+│   ├── confirm_reset_password_screen.dart  # Password reset confirmation
+│   ├── home_screen.dart               # Main dashboard
+│   ├── map.dart                       # Parking map with navigation
+│   ├── statistics_screen.dart         # Usage analytics
+│   ├── spot_watch_screen.dart         # Multi-spot monitoring
+│   ├── setting_screen.dart            # User preferences
+│   ├── admin_screen.dart              # Admin panel hub
+│   ├── wip_screen.dart                # Placeholder screen
+│   └── admin/
+│       ├── grid_designer_screen.dart  # Parking lot layout editor
+│       ├── grid_painter.dart          # Canvas rendering for grid
+│       ├── designer_toolbar.dart      # Grid editor tools
+│       ├── properties_panel.dart      # Element property editor
+│       ├── grid_designer_io.dart      # Platform-specific I/O (mobile)
+│       ├── grid_designer_web.dart     # Platform-specific I/O (web)
+│       ├── user_management_screen.dart  # User administration
+│       └── system_logs_screen.dart    # Log viewer
+├── services/
+│   ├── auth_service.dart              # Amplify auth wrapper
+│   ├── dynamodb_service.dart          # DynamoDB data operations
+│   ├── logging_service.dart           # System logging singleton
+│   ├── theme_provider.dart            # Dark/light theme state
+│   ├── admin_router.dart              # Admin navigation routes
+│   └── amplifyconfiguration.dart      # AWS Amplify config
+├── widgets/
+│   ├── animated_gradient_background.dart  # Animated gradient widget
+│   ├── glassmorphic_card.dart         # Glass-effect card component
+│   ├── scale_button.dart              # Animated button with scale effect
+│   ├── fade_slide_transition.dart     # Staggered fade/slide animation
+│   ├── stat_card.dart                 # Statistics display card
+│   └── navigation.dart                # Navigation helper
+└── utils/
+    └── pathfinder.dart                # A* pathfinding implementation
 ```
 
-## 🏗 System Architecture (Context)
+## Setup
 
-This application is designed to work as part of a complete IoT Smart Parking solution. While this repository contains the **Frontend Application**, the full system typically includes:
+### Requirements
 
-1.  **Embedded Layer**: ESP32 sensors (ToF, mmWave) and Cameras detecting parking occupancy.
-2.  **Edge Processing**: A local server (Python) processing sensor data and running YOLOv8 for vehicle detection.
-3.  **Backend Layer**: A cloud database (e.g., Supabase or AWS DynamoDB) storing real-time state.
-4.  **Frontend Layer (This Repo)**: The mobile/desktop app that subscribes to database updates to show real-time availability.
+- Flutter SDK 3.6.1+
+- Dart SDK
+- AWS Account (for Amplify)
 
-*Note: The current version of the app uses mock data for the map to demonstrate UI and navigation logic.*
+### Installation
 
-## 🤝 Contributing
+```bash
+git clone https://github.com/yourusername/smartparkingsystem.git
+cd smartparkingsystem
+flutter pub get
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### AWS Configuration
 
-## 📄 License
+Amplify configuration is stored in `lib/services/amplifyconfiguration.dart`. Update with your Cognito User Pool and DynamoDB credentials, or run:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```bash
+amplify init
+amplify add auth
+amplify push
+```
+
+### Run
+
+```bash
+flutter run
+```
+
+## Architecture
+
+Part of an IoT smart parking solution:
+
+1. **Sensors** - ESP32 with ToF/mmWave sensors, camera-based detection
+2. **Edge Processing** - Local server running YOLOv8 vehicle detection
+3. **Backend** - AWS DynamoDB for real-time state storage
+4. **Frontend** (this repo) - Flutter app subscribing to database updates
+
+## License
+
+MIT License - see [LICENSE](LICENSE)
