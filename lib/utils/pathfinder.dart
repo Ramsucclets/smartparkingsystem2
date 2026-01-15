@@ -1,7 +1,8 @@
 import 'dart:collection';
 import '../models/parking_grid.dart';
 
-/// A node in the pathfinding grid
+//VERY VERY VERY WIP NOT FOR FINAL IMPLEMENTATION
+
 class PathNode {
   final int x;
   final int y;
@@ -40,34 +41,29 @@ class PathResult {
 }
 
 /// A* Pathfinder for computing routes in the parking grid
-/// Cars can only travel on roads - obstacles and parking spots block movement
 class PathFinder {
   final ParkingGrid grid;
-  final double cellSize; // Size of each pathfinding cell
+  final double cellSize; 
   late List<List<PathNode>> _nodes;
   late int _gridWidth;
   late int _gridHeight;
 
   PathFinder(this.grid, {this.cellSize = 20});
 
-  /// Initialize the pathfinding grid from the parking grid
   void _initializeGrid() {
     _gridWidth = (grid.canvasWidth / cellSize).ceil();
     _gridHeight = (grid.canvasHeight / cellSize).ceil();
 
-    // Create grid of nodes (all start as blocked)
     _nodes = List.generate(
       _gridHeight,
       (y) => List.generate(_gridWidth, (x) => PathNode(x, y)),
     );
 
-    // Mark road cells as walkable
     for (int y = 0; y < _gridHeight; y++) {
       for (int x = 0; x < _gridWidth; x++) {
         final worldX = x * cellSize + cellSize / 2;
         final worldY = y * cellSize + cellSize / 2;
         _nodes[y][x].isWalkable = _isOnRoad(worldX, worldY);
-        // Reset pathfinding state
         _nodes[y][x].gCost = double.infinity;
         _nodes[y][x].hCost = 0;
         _nodes[y][x].parent = null;
@@ -75,7 +71,6 @@ class PathFinder {
     }
   }
 
-  /// Check if a world position is on any road
   bool _isOnRoad(double x, double y) {
     for (final road in grid.roads) {
       if (x >= road.x &&
@@ -88,7 +83,6 @@ class PathFinder {
     return false;
   }
 
-  /// Convert world coordinates to grid coordinates
   (int, int) _worldToGrid(double x, double y) {
     return (
       (x / cellSize).floor().clamp(0, _gridWidth - 1),
@@ -96,7 +90,6 @@ class PathFinder {
     );
   }
 
-  /// Convert grid coordinates to world coordinates (center of cell)
   Map<String, double> _gridToWorld(int x, int y) {
     return {
       'x': x * cellSize + cellSize / 2,
@@ -104,7 +97,6 @@ class PathFinder {
     };
   }
 
-  /// Find path from start to end using A* algorithm
   PathResult findPath(double startX, double startY, double endX, double endY) {
     _initializeGrid();
 
@@ -118,17 +110,13 @@ class PathFinder {
       return PathResult.failure('Start position is not on a road');
     }
 
-    // For destination, we allow non-road cells (parking spots)
-    // The pathfinder will find the closest road cell to the destination
 
     // A* algorithm using a priority queue
     final openSet = SplayTreeSet<PathNode>((a, b) {
       final fCompare = a.fCost.compareTo(b.fCost);
       if (fCompare != 0) return fCompare;
-      // Tie-breaker: prefer lower hCost (closer to goal)
       final hCompare = a.hCost.compareTo(b.hCost);
       if (hCompare != 0) return hCompare;
-      // Final tie-breaker: use position to ensure consistent ordering
       final xCompare = a.x.compareTo(b.x);
       if (xCompare != 0) return xCompare;
       return a.y.compareTo(b.y);
@@ -147,7 +135,6 @@ class PathFinder {
       final current = openSet.first;
       openSet.remove(current);
 
-      // Track closest node to destination (for when destination is off-road)
       final distToEnd = _heuristic(current, endNode);
       if (distToEnd < closestDistance) {
         closestDistance = distToEnd;

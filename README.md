@@ -117,7 +117,6 @@ flutter run
 Part of an IoT smart parking solution:
 
 1. **Sensors** - ESP32 with ToF/mmWave sensors, camera-based detection
-2. **Edge Processing** - Local server running YOLOv8 vehicle detection
 3. **Backend** - AWS DynamoDB for real-time state storage
 4. **Frontend** (this repo) - Flutter app subscribing to database updates
 
